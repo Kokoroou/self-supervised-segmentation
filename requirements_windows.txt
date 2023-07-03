@@ -16,7 +16,9 @@ submitit==1.4.5
 tensorflow==2.12.0
 tensorflow_intel==2.12.0
 timm==0.6.13
+torch==2.0.0
 torchinfo==1.8.0
+torchvision~=0.15.1
 tqdm==4.65.0
 uvicorn==0.22.0
 wandb==0.15.4
