@@ -1,18 +1,21 @@
-FROM python3.8-slim
+FROM python:3.8-slim
 
-RUN apt update
+RUN apt update && apt install ffmpeg libsm6 libxext6 -y
 
-RUN pip3 install --upgrade pip
+RUN pip3 install --no-cache-dir --upgrade pip
 
-COPY requirements_pytorch.txt /tmp/requirements_pytorch.txt
-RUN pip3 install --no-cache-dir -r /tmp/requirements_pytorch.txt
+COPY ./requirements-pytorch.txt /Workspace/requirements-pytorch.txt
+RUN pip3 install --no-cache-dir -r /Workspace/requirements-pytorch.txt
 
-COPY requirements.txt /tmp/requirements.txt
-RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
+COPY ./requirements.txt /Workspace/requirements.txt
+RUN pip3 install --no-cache-dir -r /Workspace/requirements.txt
 
-COPY . /app
-WORKDIR /app/self-supervised-segmentation
+ADD . /Workspace
 
-RUN pip3 install -e .
+WORKDIR /Workspace
 
-CMD streamlit run /app/self-supervised-segmentation/services/streamlit/app.py --server.port 8585
+RUN pip3 install --no-cache-dir -e .
+
+WORKDIR /Workspace/self-supervised-segmentation/services/streamlit
+
+CMD streamlit run ./Home.py --server.port 8585
