@@ -6,14 +6,18 @@ from ui.models.utils.image_process import unpatchify
 
 
 class AutoencoderResult:
-    def __init__(self, input_img, output):
+    def __init__(self, input_img, output, image_size=224, patch_size=16):
         """
         Initialize an output object.
         :param input_img: Input image from the model
         :param output: Output object from the model
+        :param image_size: Resized image size
+        :param patch_size: Size of the patch
         """
         self.input = input_img
         self.output = output
+        self.image_size = image_size
+        self.patch_size = patch_size
 
         self.mask = None  # Binary mask. 1 is removing, 0 is keeping
         self.masked = None  # Masked image (input image * mask)
@@ -30,13 +34,13 @@ class AutoencoderResult:
         :return: Masked image
         """
         x = np.array(self.input)
-        x = cv2.resize(x, (224, 224))
+        x = cv2.resize(x, (self.image_size, self.image_size))
         x = torch.tensor(x)
 
         # visualize the mask
         mask = self.output.mask.detach().cpu()
-        mask = mask.unsqueeze(-1).repeat(1, 1, 16 ** 2 * 3)  # (N, H*W, p*p*3)
-        mask = unpatchify(mask)  # 1 is removing, 0 is keeping
+        mask = mask.unsqueeze(-1).repeat(1, 1, self.patch_size ** 2 * 3)  # (N, H*W, p*p*3)
+        mask = unpatchify(mask, self.patch_size)  # 1 is removing, 0 is keeping
         mask = torch.einsum('nchw->nhwc', mask)
         mask = mask[0]
 
@@ -57,7 +61,7 @@ class AutoencoderResult:
         imagenet_std = np.array([0.229, 0.224, 0.225])
 
         reconstructed = self.output.logits.detach().cpu()
-        reconstructed = unpatchify(reconstructed, 16)
+        reconstructed = unpatchify(reconstructed, self.patch_size)
         reconstructed = torch.einsum('nchw->nhwc', reconstructed)
         reconstructed = reconstructed[0]
         reconstructed = torch.clip((reconstructed * imagenet_std + imagenet_mean) * 255, 0, 255)

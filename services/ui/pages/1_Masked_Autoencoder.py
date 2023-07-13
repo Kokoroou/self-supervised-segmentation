@@ -54,7 +54,7 @@ def main():
                                            min_value=0, max_value=100, value=75, step=5)
 
     # Check if the model has been loaded
-    if "selected_model" not in st.session_state:
+    if "model" not in st.session_state:
         # Load the model
         st.session_state.selected_model = selected_model
         st.session_state.model = load_model(selected_model, checkpoint_list, checkpoint_dir)

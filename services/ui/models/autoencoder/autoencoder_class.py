@@ -21,11 +21,12 @@ class Autoencoder:
         #     if is_checkpoint(model):
         #         args = torch.load(model, map_location=torch.device('cpu'))['args']
 
-    def inference(self, image, mask_ratio=0.75):
+    def inference(self, image, mask_ratio: float = 0.75):
         """
         Perform inference on a single image.
 
         :param image: Image to perform inference on
+        :param mask_ratio: Ratio of the image to be masked
         :return: Output object that contains the reconstructed image, mask, and loss
         """
         inputs = self.image_processor(images=image, return_tensors="pt")
@@ -34,4 +35,6 @@ class Autoencoder:
 
         outputs = self.model(**inputs)
 
-        return AutoencoderResult(image, outputs)
+        return AutoencoderResult(image, outputs,
+                                 image_size=self.model.config.image_size,
+                                 patch_size=self.model.config.patch_size)
