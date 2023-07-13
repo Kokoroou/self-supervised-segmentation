@@ -6,7 +6,7 @@ import torch.nn as nn
 from timm.models.vision_transformer import PatchEmbed, Block
 from torchinfo import summary
 
-from research.autoencoder.model.mae.util.image_process import random_masking, unpatchify
+from research.autoencoder.model.mae.util.image_process import random_masking, unpatchify, patchify
 from util.pos_embed import get_2d_sincos_pos_embed
 
 
@@ -184,23 +184,24 @@ class MaskedAutoencoderViT(nn.Module):
 
         return x
 
-    # def forward_loss(self, imgs, pred, mask):
-    #     """
-    #     imgs: [N, 3, H, W]
-    #     pred: [N, L, p*p*3]
-    #     mask: [N, L], 0 is keep, 1 is remove,
-    #     """
-    #     target = patchify(imgs, self.patch_size)
-    #     if self.norm_pix_loss:
-    #         mean = target.mean(dim=-1, keepdim=True)
-    #         var = target.var(dim=-1, keepdim=True)
-    #         target = (target - mean) / (var + 1.e-6)**.5
-    #
-    #     loss = (pred - target) ** 2
-    #     loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
-    #
-    #     loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches
-    #     return loss
+    def forward_loss(self, imgs, pred, mask):
+        """
+        imgs: [N, 3, H, W]
+        pred: [N, L, p*p*3]
+        mask: [N, L], 0 is keep, 1 is remove,
+        """
+        target = patchify(imgs, self.patch_size)
+
+        if self.norm_pix_loss:
+            mean = target.mean(dim=-1, keepdim=True)
+            var = target.var(dim=-1, keepdim=True)
+            target = (target - mean) / (var + 1.e-6)**.5
+
+        loss = (pred - target) ** 2
+        loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
+
+        loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches
+        return loss
 
     def forward(self, imgs, mask_ratio=0.75):
         """
@@ -215,8 +216,8 @@ class MaskedAutoencoderViT(nn.Module):
         """
         latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
         pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
-        # loss = self.forward_loss(imgs, pred, mask)
-        return pred
+        loss = self.forward_loss(imgs, pred, mask)
+        return loss, pred, mask
 
 
 def mae_vit_base_patch16_dec512d8b(**kwargs):
@@ -243,7 +244,7 @@ def mae_vit_huge_patch14_dec512d8b(**kwargs):
     return model
 
 
-# set recommended archs
+# Set recommended architectures
 mae_vit_base_patch16 = mae_vit_base_patch16_dec512d8b  # decoder: 512 dim, 8 blocks
 mae_vit_large_patch16 = mae_vit_large_patch16_dec512d8b  # decoder: 512 dim, 8 blocks
 mae_vit_huge_patch14 = mae_vit_huge_patch14_dec512d8b  # decoder: 512 dim, 8 blocks

@@ -1,8 +1,4 @@
-import numpy as np
-import torch
-
-from ui.models.utils.checker import is_checkpoint
-from ui.models.utils.image_process import unpatchify
+from ui.models.autoencoder.autoencoder_result import AutoencoderResult
 
 
 class Autoencoder:
@@ -11,51 +7,31 @@ class Autoencoder:
         Initialize a autoencoder model. If 'model' is a checkpoint path, load the model from the checkpoint.
         :param model: Model name or checkpoint path
         """
-        if model == "facebook/vit-mae-base":
-            from transformers import AutoImageProcessor, ViTMAEModel, ViTMAEForPreTraining
+        # Public model with checkpoint
+        if model in ["facebook/vit-mae-base", "facebook/vit-mae-large", "facebook/vit-mae-huge"]:
+            from transformers import AutoImageProcessor, ViTMAEForPreTraining
 
             self.image_processor = AutoImageProcessor.from_pretrained(model)
             self.model = ViTMAEForPreTraining.from_pretrained(model)
 
-        elif is_checkpoint(model):
-            self.model = None
+        # # Custom model with checkpoint
+        # else:
+        #     # Simple converter to convert image to tensor
+        #     self.image_processor = None
+        #     if is_checkpoint(model):
+        #         args = torch.load(model, map_location=torch.device('cpu'))['args']
 
-            # Load model with checkpoint
-            self.load(model)
-
-    def load(self, checkpoint_path):
-        """
-        Load a custom model from a checkpoint path.
-        :param checkpoint_path: Path to the checkpoint
-        """
-        pass
-
-    def inference(self, image):
+    def inference(self, image, mask_ratio=0.75):
         """
         Perform inference on a single image.
+
         :param image: Image to perform inference on
         :return: Output object that contains the reconstructed image, mask, and loss
         """
         inputs = self.image_processor(images=image, return_tensors="pt")
+
+        self.model.config.mask_ratio = mask_ratio
+
         outputs = self.model(**inputs)
 
-        logits = outputs.logits
-
-        # print(logits.shape)
-        # print(type(logits))
-        # print(logits)
-
-        logits = unpatchify(logits, 16)
-        # print(logits.shape)
-
-        logits = torch.einsum('nchw->nhwc', logits).detach().cpu()[0]
-        # print(logits.shape)
-
-        imagenet_mean = np.array([0.485, 0.456, 0.406])
-        imagenet_std = np.array([0.229, 0.224, 0.225])
-
-        logits = torch.clip((logits * imagenet_std + imagenet_mean) * 255, 0, 255)
-
-        logits = logits.numpy().astype(np.uint8)
-
-        return logits
+        return AutoencoderResult(image, outputs)
