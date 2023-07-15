@@ -1,9 +1,6 @@
-from pathlib import Path
-
-import torch
+from transformers import AutoImageProcessor, ViTMAEForPreTraining
 
 from ui.models.autoencoder.autoencoder_result import AutoencoderResult
-from ui.models.utils.checker import is_checkpoint
 
 
 class Autoencoder:
@@ -12,24 +9,8 @@ class Autoencoder:
         Initialize a autoencoder model. If 'model' is a checkpoint path, load the model from the checkpoint.
         :param model: Model name or checkpoint path
         """
-        # Public model with checkpoint
-        if model in ["facebook/vit-mae-base", "facebook/vit-mae-large", "facebook/vit-mae-huge"]:
-            from transformers import AutoImageProcessor, ViTMAEForPreTraining
-
-            self.image_processor = AutoImageProcessor.from_pretrained(model)
-            self.model = ViTMAEForPreTraining.from_pretrained(model)
-
-        # Custom model with checkpoint
-        else:
-            from transformers import AutoImageProcessor, ViTMAEForPreTraining
-
-            self.image_processor = AutoImageProcessor.from_pretrained(model)
-            self.model = ViTMAEForPreTraining.from_pretrained(model)
-
-            # self.image_processor = AutoImageProcessor.from_pretrained("facebook/vit-mae-base")
-            # if is_checkpoint(model):
-            #     state_dict = torch.load(model, map_location=torch.device('cpu'))['model']
-            #     self.model = ViTMAEForPreTraining.from_pretrained("facebook/vit-mae-base", state_dict=state_dict)
+        self.image_processor = AutoImageProcessor.from_pretrained(model)
+        self.model = ViTMAEForPreTraining.from_pretrained(model)
 
     def inference(self, image, mask_ratio: float = 0.75):
         """

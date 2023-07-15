@@ -9,7 +9,7 @@ scikit-image==0.21.0
 streamlit==1.23.1
 submitit==1.4.5
 tensorflow==2.12.0
-tensorflow_intel==2.12.0
+# tensorflow-intel==2.12.0
 timm==0.6.13
 torchinfo==1.8.0
 tqdm==4.65.0

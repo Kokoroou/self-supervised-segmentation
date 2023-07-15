@@ -157,9 +157,9 @@ def convert_to_huggingface_model(checkpoint_path: Union[str, PathLike], model_na
     :param model_name: Name of the model to save
     :param push_to_hub: Upload model to the HuggingFace model hub
     """
-    if push_to_hub:
-        # Login to save model and config to the HuggingFace model hub
-        notebook_login()
+    # if push_to_hub:
+    #     # Login to save model and config to the HuggingFace model hub
+    #     notebook_login()
 
     # Load checkpoint
     checkpoint = torch.load(checkpoint_path)
@@ -200,9 +200,9 @@ def convert_to_huggingface_image_processor(base_name: str, model_name: str, push
     :param push_to_hub: Upload image processor to the HuggingFace model hub
     :return: HuggingFace image processor
     """
-    if push_to_hub:
-        # Login to save image processor to HuggingFace model hub
-        notebook_login()
+    # if push_to_hub:
+    #     # Login to save image processor to HuggingFace model hub
+    #     notebook_login()
 
     image_processor = AutoImageProcessor.from_pretrained(base_name)
     image_processor.save_pretrained(model_name, push_to_hub=push_to_hub)
@@ -218,5 +218,5 @@ if __name__ == '__main__':
     current_dir = Path(__file__).parent.resolve()
     ckpt_path = current_dir / 'model' / 'mae' / 'checkpoint' / checkpoint_filename
 
-    convert_to_huggingface_image_processor(base_processor_name, huggingface_model_name, push_to_hub=False)
-    convert_to_huggingface_model(ckpt_path, huggingface_model_name, push_to_hub=False)
+    convert_to_huggingface_image_processor(base_processor_name, huggingface_model_name, push_to_hub=True)
+    convert_to_huggingface_model(ckpt_path, huggingface_model_name, push_to_hub=True)
