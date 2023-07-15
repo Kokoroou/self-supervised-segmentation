@@ -1,4 +1,9 @@
+from pathlib import Path
+
+import torch
+
 from ui.models.autoencoder.autoencoder_result import AutoencoderResult
+from ui.models.utils.checker import is_checkpoint
 
 
 class Autoencoder:
@@ -14,12 +19,17 @@ class Autoencoder:
             self.image_processor = AutoImageProcessor.from_pretrained(model)
             self.model = ViTMAEForPreTraining.from_pretrained(model)
 
-        # # Custom model with checkpoint
-        # else:
-        #     # Simple converter to convert image to tensor
-        #     self.image_processor = None
-        #     if is_checkpoint(model):
-        #         args = torch.load(model, map_location=torch.device('cpu'))['args']
+        # Custom model with checkpoint
+        else:
+            from transformers import AutoImageProcessor, ViTMAEForPreTraining
+
+            self.image_processor = AutoImageProcessor.from_pretrained(model)
+            self.model = ViTMAEForPreTraining.from_pretrained(model)
+
+            # self.image_processor = AutoImageProcessor.from_pretrained("facebook/vit-mae-base")
+            # if is_checkpoint(model):
+            #     state_dict = torch.load(model, map_location=torch.device('cpu'))['model']
+            #     self.model = ViTMAEForPreTraining.from_pretrained("facebook/vit-mae-base", state_dict=state_dict)
 
     def inference(self, image, mask_ratio: float = 0.75):
         """

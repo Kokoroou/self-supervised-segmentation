@@ -64,6 +64,14 @@ class AutoencoderResult:
         reconstructed = unpatchify(reconstructed, self.patch_size)
         reconstructed = torch.einsum('nchw->nhwc', reconstructed)
         reconstructed = reconstructed[0]
+
+        # reconstructed = (reconstructed * imagenet_std + imagenet_mean) * 255
+        #
+        # print(reconstructed.shape)
+        # print(torch.min(reconstructed))
+        # print(torch.max(reconstructed))
+
+        # reconstructed = torch.clip(reconstructed * 255, 0, 255)
         reconstructed = torch.clip((reconstructed * imagenet_std + imagenet_mean) * 255, 0, 255)
 
         self.reconstructed = reconstructed.numpy().astype(np.uint8)

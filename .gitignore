@@ -163,6 +163,7 @@ cython_debug/
 data/
 dataset/
 log_dir/
+checkpoint/
 
 # Model
 *.onnx

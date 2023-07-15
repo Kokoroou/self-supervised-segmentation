@@ -9,31 +9,25 @@ from ui.models.autoencoder.autoencoder_class import Autoencoder
 from ui.utils.encoder import MAE
 
 
-def load_model(selected_model, checkpoint_list, checkpoint_dir):
-    if selected_model in checkpoint_list:
-        selected_model = str(checkpoint_dir / selected_model)
-        with st.spinner("Loading Model..."):
-            # Load the model
-            model = Autoencoder(model=selected_model)
-    else:
-        with st.spinner("Loading Model..."):
-            # Load the model
-            model = Autoencoder(model=selected_model)
+def load_model(selected_model):
+    with st.spinner("Loading Model..."):
+        # Load the model
+        model = Autoencoder(model=selected_model)
 
     return model
 
 
-# # Define a function to perform the inference using the selected model
-# def perform_inference(image, model, masking_percentage):
-#     current_dir = Path(__file__).parent.resolve()
-#     main_dir = current_dir.parent.parent.parent
-#     checkpoint_path = main_dir / 'research' / 'mae' / 'output_dir' / model
-#
-#     model = MAE('mae_vit_base_patch16', str(checkpoint_path))
-#
-#     masked, reconstructed, paste = model(image, masking_percentage / 100)
-#
-#     return masked, reconstructed, paste
+# Define a function to perform the inference using the selected model
+def perform_inference(image, model, masking_percentage):
+    current_dir = Path(__file__).parent.resolve()
+    main_dir = current_dir.parent.parent.parent
+    checkpoint_path = main_dir / 'research' / 'mae' / 'output_dir' / model
+
+    model = MAE('mae_vit_base_patch16', str(checkpoint_path))
+
+    masked, reconstructed, paste = model(image, masking_percentage / 100)
+
+    return masked, reconstructed, paste
 
 
 def main():
@@ -41,14 +35,18 @@ def main():
     st.sidebar.title("Model Configuration")
 
     current_dir = Path(__file__).parent.resolve()
-    checkpoint_dir = current_dir.parent.parent.parent / 'research' / 'mae' / 'output_dir'
-    checkpoint_list = [checkpoint_path.name for checkpoint_path in checkpoint_dir.glob('*.pth')]
+    # checkpoint_dir = current_dir.parent.parent.parent / 'research' / 'mae' / 'output_dir'
+    checkpoint_dir = current_dir.parent / "models" / "autoencoder" / "vit_mae" / "checkpoint"
+    checkpoint_list = [checkpoint_path.name for checkpoint_path in checkpoint_dir.glob('*')]
 
     # Add components to the sidebar
     # selected_model = st.sidebar.selectbox("Select Model", checkpoint_list)
     selected_model = st.sidebar.selectbox("Select Model",
                                           ["facebook/vit-mae-base", "facebook/vit-mae-large", "facebook/vit-mae-huge"]
                                           + checkpoint_list)
+
+    if selected_model in checkpoint_list:
+        selected_model = str(checkpoint_dir / selected_model)
 
     masking_percentage = st.sidebar.slider(label="Masking Percentage",
                                            min_value=0, max_value=100, value=75, step=5)
@@ -57,15 +55,13 @@ def main():
     if "model" not in st.session_state:
         # Load the model
         st.session_state.selected_model = selected_model
-        st.session_state.model = load_model(selected_model, checkpoint_list, checkpoint_dir)
-        # st.session_state.model = Autoencoder(model=selected_model)
+        st.session_state.model = load_model(selected_model)
     else:
         # Check if the selected model has changed
         if st.session_state.selected_model != selected_model:
             # Load the model
             st.session_state.selected_model = selected_model
-            st.session_state.model = load_model(selected_model, checkpoint_list, checkpoint_dir)
-            # st.session_state.model = Autoencoder(model=selected_model)
+            st.session_state.model = load_model(selected_model)
 
     # Create the main content area
     st.title("Masked Autoencoder Model Inference")
@@ -93,6 +89,9 @@ def main():
             masked = cv2.resize(result.masked, (original_width, original_height))
             reconstructed = cv2.resize(result.reconstructed, (original_width, original_height))
             pasted = cv2.resize(result.pasted, (original_width, original_height))
+
+            # # Mask the image and reconstruct it with model Masked Autoencoder
+            # masked, reconstructed, pasted = perform_inference(image, selected_model, masking_percentage)
 
             end_time = time.time()
 
