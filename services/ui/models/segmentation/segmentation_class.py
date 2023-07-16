@@ -1,17 +1,15 @@
+from transformers import AutoImageProcessor, SegformerForSemanticSegmentation
+from ui.models.segmentation.segmentation_result import SegmentorResult
+
+
 class Segmentor:
     def __init__(self, model):
         """
-        Initialize a segmentation model. If 'model' is a checkpoint path, load the model from the checkpoint.
-        :param model: Model name or checkpoint path
+        Initialize a segmentation model. If 'model' is a checkpoint directory, load the model from the checkpoint.
+        :param model: Model name or checkpoint directory
         """
-        pass
-
-    def load(self, checkpoint_path):
-        """
-        Load a model from a checkpoint path.
-        :param checkpoint_path: Path to the checkpoint
-        """
-        pass
+        self.image_processor = AutoImageProcessor.from_pretrained(model)
+        self.model = SegformerForSemanticSegmentation.from_pretrained(model)
 
     def inference(self, image):
         """
@@ -19,4 +17,9 @@ class Segmentor:
         :param image: Image to perform inference on
         :return: Segmentation mask
         """
-        pass
+        inputs = self.image_processor(images=image, return_tensors="pt")
+
+        outputs = self.model(**inputs)
+
+        return SegmentorResult(image, outputs,
+                               image_size=self.model.config.image_size)

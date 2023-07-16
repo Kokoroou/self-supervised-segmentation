@@ -3,8 +3,7 @@ from pathlib import Path
 from typing import Union
 
 import torch
-from huggingface_hub import notebook_login
-from transformers import ViTMAEConfig, ViTMAEForPreTraining, ImageProcessingMixin, AutoImageProcessor
+from transformers import ViTMAEConfig, ViTMAEForPreTraining, AutoImageProcessor
 
 
 def rename_key(state_dict):
@@ -157,10 +156,6 @@ def convert_to_huggingface_model(checkpoint_path: Union[str, PathLike], model_na
     :param model_name: Name of the model to save
     :param push_to_hub: Upload model to the HuggingFace model hub
     """
-    # if push_to_hub:
-    #     # Login to save model and config to the HuggingFace model hub
-    #     notebook_login()
-
     # Load checkpoint
     checkpoint = torch.load(checkpoint_path)
     args = vars(checkpoint['args'])
@@ -200,10 +195,6 @@ def convert_to_huggingface_image_processor(base_name: str, model_name: str, push
     :param push_to_hub: Upload image processor to the HuggingFace model hub
     :return: HuggingFace image processor
     """
-    # if push_to_hub:
-    #     # Login to save image processor to HuggingFace model hub
-    #     notebook_login()
-
     image_processor = AutoImageProcessor.from_pretrained(base_name)
     image_processor.save_pretrained(model_name, push_to_hub=push_to_hub)
 

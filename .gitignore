@@ -164,6 +164,7 @@ data/
 dataset/
 log_dir/
 checkpoint/
+research/autoencoder/vit-mae-base-*/
 
 # Model
 *.onnx
