@@ -40,7 +40,7 @@ def add_train_arguments(parser):
         "--output-dir",
         "-o",
         type=str,
-        default="./autoencoder/checkpoint",
+        default="./research/autoencoder/checkpoint",
         help="Directory for save checkpoint and logging information",
     )
     parser.add_argument(

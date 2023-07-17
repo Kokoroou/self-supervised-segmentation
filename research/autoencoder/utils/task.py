@@ -2,17 +2,19 @@ import importlib
 import os
 import time
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PurePath
 
 import cv2
 import imutils
 import torch
 import wandb
+import wget as wget
 from torch import optim, nn
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
 from tqdm import tqdm
+import validators
 
 from .args import show_parameters, remove_parameters, add_parameters
 from .checkpoint import save_model
@@ -24,23 +26,34 @@ def train(args):
     # Modify to real arguments before showing
     if args.device == "cuda" and not torch.cuda.is_available():
         args.device = "cpu"
+
     args.source_dir = Path(args.source_dir).absolute()
     args.output_dir = Path(args.output_dir).absolute()
-    if args.from_pretrained:
-        args.checkpoint = Path(args.checkpoint).absolute()
 
-    remove_parameters(args)
-    show_parameters(args, "training")
-
-    # Check if paths of source and target directories exist, and checkpoint file exists if from_pretrained is True
     if not args.source_dir.exists():
         raise FileNotFoundError(f'Source directory not found: {args.source_dir}')
-    if not args.output_dir.exists():
-        raise FileNotFoundError(f'Target directory not found: {args.output_dir}')
-    if getattr(args, "from_pretrained", False) and not args.checkpoint.exists():
-        raise FileNotFoundError(f'Checkpoint file not found: {args.checkpoint}')
 
-    if getattr(args, "from_pretrained", False):
+    # Make sure output directory exists
+    os.makedirs(args.output_dir, exist_ok=True)
+
+    if args.from_pretrained:
+        if not os.path.exists(args.checkpoint) and not validators.url(args.checkpoint):
+            raise FileNotFoundError(f'Checkpoint file not found: {args.checkpoint}')
+        elif validators.url(args.checkpoint):
+            checkpoint_file = Path(args.checkpoint).name
+            checkpoint_path = Path(args.output_dir, checkpoint_file).as_posix()
+
+            if not Path(checkpoint_path).exists():
+                # Download checkpoint file
+                print(f"Downloading checkpoint file from {args.checkpoint}")
+                wget.download(args.checkpoint, checkpoint_path)
+
+            # Update checkpoint path
+            args.checkpoint = checkpoint_path
+
+        args.checkpoint = Path(args.checkpoint).absolute()
+
+        # Load checkpoint
         checkpoint = torch.load(args.checkpoint, map_location="cpu")
 
         # Add parameters from checkpoint to args
@@ -56,6 +69,10 @@ def train(args):
     new_checkpoint_dir = Path(args.output_dir) / new_checkpoint_name
     args.output_dir = new_checkpoint_dir
     os.makedirs(args.output_dir, exist_ok=True)
+
+    # Remove parameters that empty or not used, then show parameters
+    remove_parameters(args)
+    show_parameters(args, "training")
 
     #############################
     # Load model
@@ -132,7 +149,7 @@ def train(args):
             loss, pred, mask = model(inputs)
 
             # Compute the loss's gradients
-            loss.backward()
+            loss.sum().backward()
 
             # Adjust learning weights
             optimizer.step()
