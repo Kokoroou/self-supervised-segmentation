@@ -74,9 +74,8 @@ def main():
                 # Mask the image and reconstruct it with model Masked Autoencoder
                 result = st.session_state.model.inference(image)
 
-                # Resize the image to the original size
-                segment = cv2.resize(result.segment, (original_width, original_height))
-                pasted = cv2.resize(result.pasted, (original_width, original_height))
+                # Get the segmentation and pasted image from the result
+                segment, pasted = result.segment, result.pasted
 
                 end_time = time.time()
 

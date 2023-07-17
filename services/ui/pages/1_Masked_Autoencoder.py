@@ -26,7 +26,8 @@ def main():
     default_choice = ["--Select--"]
     local_checkpoint_list = [checkpoint_path.name for checkpoint_path in checkpoint_dir.glob('*')]
     online_checkpoint_list = ["facebook/vit-mae-base", "facebook/vit-mae-large", "facebook/vit-mae-huge",
-                              "kokoroou/vit-mae-base-1"]
+                              "kokoroou/vit-mae-base-1",
+                              "kokoroou/fb-vit-mae-large-ganloss"]
 
     # Add components to the sidebar
     selected_model = st.sidebar.selectbox("Select Model", default_choice +
@@ -77,10 +78,8 @@ def main():
                 # Mask the image and reconstruct it with model Masked Autoencoder
                 result = st.session_state.model.inference(image, mask_ratio=masking_percentage / 100)
 
-                # Resize the image to the original size
-                masked = cv2.resize(result.masked, (original_width, original_height))
-                reconstructed = cv2.resize(result.reconstructed, (original_width, original_height))
-                pasted = cv2.resize(result.pasted, (original_width, original_height))
+                # Get the masked, reconstructed and pasted image from the result
+                masked, reconstructed, pasted = result.masked, result.reconstructed, result.pasted
 
                 end_time = time.time()
 

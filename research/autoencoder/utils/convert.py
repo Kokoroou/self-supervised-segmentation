@@ -98,6 +98,7 @@ def get_default_args(default_architecture):
             "hidden_size": 768,
             "num_hidden_layers": 12,
             "num_attention_heads": 12,
+            "intermediate_size": 3072,  # Self calculated
             "hidden_act": "gelu",  # Unsure
             "initializer_range": 0.02,
             "layer_norm_eps": 1e-6,
@@ -107,6 +108,7 @@ def get_default_args(default_architecture):
             "decoder_num_attention_heads": 16,
             "decoder_hidden_size": 512,
             "decoder_num_hidden_layers": 8,
+            "decoder_intermediate_size": 2048,  # Self calculated
             "norm_pix_loss": False
         }
 
@@ -115,6 +117,7 @@ def get_default_args(default_architecture):
             "hidden_size": 1024,
             "num_hidden_layers": 24,
             "num_attention_heads": 16,
+            "intermediate_size": 4096,  # Self calculated
             "hidden_act": "gelu",  # Unsure
             "initializer_range": 0.02,
             "layer_norm_eps": 1e-6,
@@ -124,6 +127,7 @@ def get_default_args(default_architecture):
             "decoder_num_attention_heads": 16,
             "decoder_hidden_size": 512,
             "decoder_num_hidden_layers": 8,
+            "decoder_intermediate_size": 2048,  # Self calculated
             "norm_pix_loss": False
         }
 
@@ -132,15 +136,17 @@ def get_default_args(default_architecture):
             "hidden_size": 1280,
             "num_hidden_layers": 32,
             "num_attention_heads": 16,
+            "intermediate_size": 3136,  # Unsure
             "hidden_act": "gelu",  # Unsure
             "initializer_range": 0.02,
             "layer_norm_eps": 1e-6,
-            "image_size": 256,  # Unsure
+            "image_size": 256,
             "patch_size": 14,
             "num_channels": 3,
             "decoder_num_attention_heads": 16,
             "decoder_hidden_size": 512,
             "decoder_num_hidden_layers": 8,
+            "decoder_intermediate_size": 2048,  # Self calculated
             "norm_pix_loss": False
         }
     else:
@@ -202,12 +208,13 @@ def convert_to_huggingface_image_processor(base_name: str, model_name: str, push
 
 
 if __name__ == '__main__':
-    checkpoint_filename = 'checkpoint(0).pth'
-    huggingface_model_name = 'vit-mae-base-1'
-    base_processor_name = 'facebook/vit-mae-base'
+    checkpoint_filename = 'mae_visualize_vit_large_ganloss.pth'
+    huggingface_model_name = 'fb-vit-mae-large-ganloss'
+    base_processor_name = 'facebook/vit-mae-large'
+    is_push_to_hub = False
 
     current_dir = Path(__file__).parent.resolve()
-    ckpt_path = current_dir / 'model' / 'mae' / 'checkpoint' / checkpoint_filename
+    ckpt_path = current_dir.parent / 'checkpoint' / checkpoint_filename
 
-    convert_to_huggingface_image_processor(base_processor_name, huggingface_model_name, push_to_hub=True)
-    convert_to_huggingface_model(ckpt_path, huggingface_model_name, push_to_hub=True)
+    convert_to_huggingface_image_processor(base_processor_name, huggingface_model_name, push_to_hub=is_push_to_hub)
+    convert_to_huggingface_model(ckpt_path, huggingface_model_name, push_to_hub=is_push_to_hub)

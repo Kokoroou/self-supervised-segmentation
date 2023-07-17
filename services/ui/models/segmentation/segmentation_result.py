@@ -15,6 +15,7 @@ class SegmentorResult:
         self.output = output
         self.image_size = image_size
 
+        # Images that can be get from the output object. All images are resized to the original image size.
         self.segment = None  # Segmentation mask
         self.pasted = None  # Pasted image (input image * (1 - segmentation mask) + segmentation mask * 255)
 

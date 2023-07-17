@@ -1,13 +1,101 @@
+import sys
 from functools import partial
 from typing import Any
 
 import torch
 import torch.nn as nn
 from timm.models.vision_transformer import PatchEmbed, Block
-from torchinfo import summary
 
-from research.autoencoder.model.mae.util.image_process import random_masking, unpatchify, patchify
-from util.pos_embed import get_2d_sincos_pos_embed
+from .utils.image_process import random_masking, unpatchify, patchify
+from .utils.pos_embed import get_2d_sincos_pos_embed
+
+model_name = "MaskedAutoencoderViT"
+
+
+def add_model_arguments(parser):
+    """
+    Add model's specific arguments
+
+    :param parser: The parser to add arguments
+    """
+    parser_mae = parser.add_argument_group("mae")
+    parser_mae.add_argument(
+        "--arch",
+        "-a",
+        type=str,
+        help="Name of the defined autoencoder architecture to use",
+    )
+    parser_mae.add_argument(
+        "--mask-ratio",
+        type=float,
+        default=0.75,
+        help="Masking ratio (percentage of removed patches)"
+    )
+    parser_mae.add_argument(
+        "--img-size",
+        type=int,
+        required=(("--arch" and "-a") not in sys.argv),
+        help="Size of input image"
+    )
+    parser_mae.add_argument(
+        "--patch-size",
+        type=int,
+        required=(("--arch" and "-a") not in sys.argv),
+        help="Size of each patch"
+    )
+    parser_mae.add_argument(
+        "--in-chans",
+        type=int,
+        required=(("--arch" and "-a") not in sys.argv),
+        help="Number of input channels"
+    )
+    parser_mae.add_argument(
+        "--encoder-embed-dim",
+        type=int,
+        required=(("--arch" and "-a") not in sys.argv),
+        help="Embedding dimension of encoder"
+    )
+    parser_mae.add_argument(
+        "--encoder-depth",
+        type=int,
+        required=(("--arch" and "-a") not in sys.argv),
+        help="Depth of encoder"
+    )
+    parser_mae.add_argument(
+        "--encoder-num-heads",
+        type=int,
+        required=(("--arch" and "-a") not in sys.argv),
+        help="Number of heads of encoder"
+    )
+    parser_mae.add_argument(
+        "--decoder-embed-dim",
+        type=int,
+        required=(("--arch" and "-a") not in sys.argv),
+        help="Embedding dimension of decoder"
+    )
+    parser_mae.add_argument(
+        "--decoder-depth",
+        type=int,
+        required=(("--arch" and "-a") not in sys.argv),
+        help="Depth of decoder"
+    )
+    parser_mae.add_argument(
+        "--decoder-num-heads",
+        type=int,
+        required=(("--arch" and "-a") not in sys.argv),
+        help="Number of heads of decoder"
+    )
+    parser_mae.add_argument(
+        "--mlp-ratio",
+        type=float,
+        required=(("--arch" and "-a") not in sys.argv),
+        help="Ratio of mlp hidden dimension to embedding dimension"
+    )
+    parser_mae.add_argument(
+        "--norm-pix-loss",
+        action="store_true",
+        help="Normalize pixel loss"
+    )
 
 
 class MaskedAutoencoderViT(nn.Module):
@@ -22,7 +110,8 @@ class MaskedAutoencoderViT(nn.Module):
                  decoder_embed_dim: int = 512, decoder_depth: int = 8, decoder_num_heads: int = 16,
                  mlp_ratio: float = 4.,
                  norm_layer: Any = nn.LayerNorm,
-                 norm_pix_loss: bool = False):
+                 norm_pix_loss: bool = False,
+                 **kwargs):
         """
         Initialize model structure
 
@@ -180,8 +269,6 @@ class MaskedAutoencoderViT(nn.Module):
         # remove cls token
         x = x[:, 1:, :]
 
-        x = unpatchify(x, self.patch_size)
-
         return x
 
     def forward_loss(self, imgs, pred, mask):
@@ -248,11 +335,3 @@ def mae_vit_huge_patch14_dec512d8b(**kwargs):
 mae_vit_base_patch16 = mae_vit_base_patch16_dec512d8b  # decoder: 512 dim, 8 blocks
 mae_vit_large_patch16 = mae_vit_large_patch16_dec512d8b  # decoder: 512 dim, 8 blocks
 mae_vit_huge_patch14 = mae_vit_huge_patch14_dec512d8b  # decoder: 512 dim, 8 blocks
-
-
-if __name__ == "__main__":
-    image_size = 224
-    model = MaskedAutoencoderViT(img_size=image_size)
-
-    summary(model, (64, 3, image_size, image_size))
-    print("\nNumber of parameters:", sum(p.numel() for p in model.parameters() if p.requires_grad))

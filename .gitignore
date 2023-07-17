@@ -164,7 +164,8 @@ data/
 dataset/
 log_dir/
 checkpoint/
-research/autoencoder/vit-mae-base-*/
+research/autoencoder/vit-mae-base*/
+research/autoencoder/fb-vit-mae-large-ganloss*/
 
 # Model
 *.onnx
