@@ -93,7 +93,7 @@ def train(args):
 
     # Move model to GPU for better performance
     model.to(args.device)
-    model = nn.DataParallel(model)  # Use all GPUs
+    # model = nn.DataParallel(model)  # Use all GPUs
 
     # Set model to train mode
     model.train()
@@ -161,7 +161,7 @@ def train(args):
             scaler.update()
 
             # Accumulate loss
-            running_loss += loss.item()
+            running_loss += loss.mean().item()
 
             # Detach inputs from GPU
             inputs.detach()
