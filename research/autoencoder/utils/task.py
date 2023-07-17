@@ -2,11 +2,12 @@ import importlib
 import os
 import time
 from datetime import datetime
-from pathlib import Path, PurePosixPath, PurePath
+from pathlib import Path
 
 import cv2
 import imutils
 import torch
+import validators
 import wandb
 import wget as wget
 from torch import optim, nn
@@ -14,7 +15,6 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
 from tqdm import tqdm
-import validators
 
 from .args import show_parameters, remove_parameters, add_parameters
 from .checkpoint import save_model
@@ -131,6 +131,11 @@ def train(args):
     # Define the optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
 
+    if args.device == "cuda":
+        scaler = torch.cuda.amp.GradScaler(enabled=True)
+    else:
+        scaler = torch.cuda.amp.GradScaler(enabled=False)
+
     # Initialize best loss to a large value
     best_loss = 1.0
 
@@ -148,11 +153,12 @@ def train(args):
             # Forward input through the model
             loss, pred, mask = model(inputs)
 
-            # Compute the loss's gradients
-            loss.sum().backward()
+            # Scale Gradients: Compute the loss's gradients
+            scaler.scale(loss).backward()
 
-            # Adjust learning weights
-            optimizer.step()
+            # Update Optimizer: Adjust learning weights
+            scaler.step(optimizer)
+            scaler.update()
 
             # Accumulate loss
             running_loss += loss.item()
