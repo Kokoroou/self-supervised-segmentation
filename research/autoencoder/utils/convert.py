@@ -168,8 +168,8 @@ def convert_to_huggingface_model(checkpoint_path: Union[str, PathLike], model_na
     weights = checkpoint['model']
 
     # If default architecture is specified, use default args
-    if args.get("architecture", None) is not None:
-        args = get_default_args(args['architecture'])
+    if args.get("arch", None) is not None:
+        args = get_default_args(args['arch'])
 
     # Convert config in checkpoint to ViTMAEConfig
     config = ViTMAEConfig(**args)

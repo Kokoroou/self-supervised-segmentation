@@ -9,7 +9,7 @@ from timm.models.vision_transformer import PatchEmbed, Block
 from .utils.image_process import random_masking, unpatchify, patchify
 from .utils.pos_embed import get_2d_sincos_pos_embed
 
-model_name = "MaskedAutoencoderViT"
+model_name = "MaskedAutoencoderViT"  # Name of main class
 
 
 def add_model_arguments(parser):
@@ -34,61 +34,51 @@ def add_model_arguments(parser):
     parser_mae.add_argument(
         "--img-size",
         type=int,
-        required=(("--arch" and "-a") not in sys.argv),
         help="Size of input image"
     )
     parser_mae.add_argument(
         "--patch-size",
         type=int,
-        required=(("--arch" and "-a") not in sys.argv),
         help="Size of each patch"
     )
     parser_mae.add_argument(
         "--in-chans",
         type=int,
-        required=(("--arch" and "-a") not in sys.argv),
         help="Number of input channels"
     )
     parser_mae.add_argument(
         "--encoder-embed-dim",
         type=int,
-        required=(("--arch" and "-a") not in sys.argv),
         help="Embedding dimension of encoder"
     )
     parser_mae.add_argument(
         "--encoder-depth",
         type=int,
-        required=(("--arch" and "-a") not in sys.argv),
         help="Depth of encoder"
     )
     parser_mae.add_argument(
         "--encoder-num-heads",
         type=int,
-        required=(("--arch" and "-a") not in sys.argv),
         help="Number of heads of encoder"
     )
     parser_mae.add_argument(
         "--decoder-embed-dim",
         type=int,
-        required=(("--arch" and "-a") not in sys.argv),
         help="Embedding dimension of decoder"
     )
     parser_mae.add_argument(
         "--decoder-depth",
         type=int,
-        required=(("--arch" and "-a") not in sys.argv),
         help="Depth of decoder"
     )
     parser_mae.add_argument(
         "--decoder-num-heads",
         type=int,
-        required=(("--arch" and "-a") not in sys.argv),
         help="Number of heads of decoder"
     )
     parser_mae.add_argument(
         "--mlp-ratio",
         type=float,
-        required=(("--arch" and "-a") not in sys.argv),
         help="Ratio of mlp hidden dimension to embedding dimension"
     )
     parser_mae.add_argument(

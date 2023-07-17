@@ -7,45 +7,17 @@ from pathlib import Path
 import cv2
 import imutils
 import torch
-from torch import optim
+import wandb
+from torch import optim, nn
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
 from tqdm import tqdm
 
-from .utils import save_model, save_best_model, delete_checkpoint
+from .args import show_parameters, remove_parameters, add_parameters
+from .checkpoint import save_model
 from ..models.utils.input_process import process_input
 from ..models.utils.output_process import process_output, concat_output
-
-
-def remove_parameters(args):
-    to_delete = []
-
-    for k, v in args.__dict__.items():
-        if not v:
-            to_delete.append(k)
-
-    for k in to_delete:
-        delattr(args, k)
-
-
-def show_parameters(args, task: str):
-    """
-    Show the parameters used for training, testing or inferring and remove the ones that are not set
-    :param args:
-    :param task:
-    :return:
-    """
-    print()
-    print("-" * 60)
-    print(f"{task.capitalize()} model with:\n")
-
-    for k, v in args.__dict__.items():
-        if v and k != "func":
-            print(f"{k}={v}")
-
-    print("-" * 60)
-    print()
 
 
 def train(args):
@@ -68,6 +40,28 @@ def train(args):
     if getattr(args, "from_pretrained", False) and not args.checkpoint.exists():
         raise FileNotFoundError(f'Checkpoint file not found: {args.checkpoint}')
 
+    if getattr(args, "from_pretrained", False):
+        checkpoint = torch.load(args.checkpoint, map_location="cpu")
+
+        # Add parameters from checkpoint to args
+        if "args" in checkpoint:
+            args = add_parameters(args, checkpoint["args"])
+
+    # Create new checkpoint directory for each training
+    if hasattr(args, "arch"):
+        new_checkpoint_name = f"{args.arch}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    else:
+        new_checkpoint_name = f"{args.model}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+    new_checkpoint_dir = Path(args.output_dir) / new_checkpoint_name
+    args.output_dir = new_checkpoint_dir
+    os.makedirs(args.output_dir, exist_ok=True)
+
+    #############################
+    # Load model
+    #############################
+    start = time.time()
+
     # Load model architecture
     module = importlib.import_module("." + args.model, "autoencoder.models")
     if "arch" in args:
@@ -80,12 +74,18 @@ def train(args):
         # Load model weights
         model.load_state_dict(torch.load(args.checkpoint, map_location=args.device)["model"])
 
-    # Move model to device for better performance
+    # Move model to GPU for better performance
     model.to(args.device)
+    model = nn.DataParallel(model)  # Use all GPUs
 
     # Set model to train mode
     model.train()
 
+    print(f"Model loaded in {time.time() - start:.2f} seconds")
+
+    #############################
+    # Load data
+    #############################
     # Define the transformations to apply to the images
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
@@ -99,54 +99,72 @@ def train(args):
     # Create a data loader to load the images in batches
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 
-    # Define the loss function and optimizer
+    #############################
+    # Train model
+    #############################
+    wandb.init(
+        job_type="train",
+        dir=args.output_dir,
+        config=vars(args),
+        project="autoencoder",
+        name=args.output_dir.name,
+        mode="online" if getattr(args, "wandb", None) else "disabled"
+    )
+
+    # Define the optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
 
+    # Initialize best loss to a large value
     best_loss = 1.0
 
-    # Create new checkpoint directory for each training
-    if hasattr(args, "arch"):
-        new_checkpoint_name = f"{args.arch}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    else:
-        new_checkpoint_name = f"{args.model}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
-    new_checkpoint_dir = Path(args.output_dir) / new_checkpoint_name
-    args.output_dir = new_checkpoint_dir
-    os.makedirs(args.output_dir, exist_ok=True)
-
     for epoch in range(args.epochs):
+        running_loss = 0.0
+
         # Iterate over the data loader batches
-        for inputs, _ in tqdm(list(train_loader)):
+        for inputs, _ in tqdm(train_loader):
+            # Move the data to the proper device (GPU or CPU)
             inputs = inputs.to(args.device)
 
+            # Zero the gradients for every batch
             optimizer.zero_grad()
 
-            # Forward pass
+            # Forward input through the model
             loss, pred, mask = model(inputs)
 
-            # Backward pass and optimization
+            # Compute the loss's gradients
             loss.backward()
+
+            # Adjust learning weights
             optimizer.step()
 
-            print(f"Epoch: {epoch}, Loss: {loss.item()}")
+            # Accumulate loss
+            running_loss += loss.item()
 
-            save_model(args=args, model=model, optimizer=optimizer, epoch=epoch)
-
-            if loss.item() < best_loss:
-                best_loss = loss.item()
-
-                with open(args.output_dir / "info.txt", "w") as f:
-                    f.write(f"Best epoch: {epoch}\nLoss: {loss.item()}")
-
-                delete_checkpoint(args=args, epoch="best")
-
-                save_best_model(
-                    args=args, model=model, optimizer=optimizer,
-                )
-
-            delete_checkpoint(args=args, epoch=epoch - 1)
-
+            # Detach inputs from GPU
             inputs.detach()
+
+        # Compute epoch loss
+        current_loss = running_loss / len(train_loader)
+        print(f"Epoch: {epoch}, Loss: {current_loss:.4f}")
+
+        # Log metrics to wandb
+        wandb.log({"loss": current_loss})
+
+        # Check if current loss is better than best loss
+        if current_loss < best_loss:
+            best = True
+            best_loss = current_loss
+
+            with open(args.output_dir / "info.txt", "w") as f:
+                f.write(f"Best epoch: {epoch}\nLoss: {current_loss}")
+        else:
+            best = False
+
+        # Save checkpoint
+        save_model(args=args, epoch=epoch, model=model, optimizer=optimizer, loss=current_loss, best=best)
+
+    # Finish wandb run
+    wandb.finish()
 
 
 def test(args):
@@ -178,6 +196,12 @@ def infer(args):
     if not args.image_path.exists():
         raise FileNotFoundError(f'Image file not found: {args.image_path}')
 
+    checkpoint = torch.load(args.checkpoint, map_location="cpu")
+
+    # Add parameters from checkpoint to args
+    if "args" in checkpoint:
+        args = add_parameters(args, checkpoint["args"])
+
     start_time = time.time()
 
     # Load model architecture
@@ -189,7 +213,7 @@ def infer(args):
         model = getattr(module, model_name)(**vars(args))
 
     # Load model weights
-    model.load_state_dict(torch.load(args.checkpoint, map_location="cpu")["model"])
+    model.load_state_dict(checkpoint["model"])
 
     # Set model to evaluation mode
     model.eval()

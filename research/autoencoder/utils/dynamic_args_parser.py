@@ -18,6 +18,11 @@ def add_train_arguments(parser):
         help="Device to train model. If device is not available, use cpu instead"
     )
     parser.add_argument(
+        "--wandb",
+        action="store_true",
+        help="Whether to use wandb to log training information or not"
+    )
+    parser.add_argument(
         "--model",
         "-m",
         type=str,
@@ -45,6 +50,7 @@ def add_train_arguments(parser):
     )
     parser.add_argument(
         "--checkpoint",
+        "-c",
         type=str,
         required=("--from-pretrained" in sys.argv),
         help="Path to pretrained model",
