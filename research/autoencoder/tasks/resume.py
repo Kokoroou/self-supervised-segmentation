@@ -248,7 +248,9 @@ def resume(args):
     # Initialize best loss to a large value
     best_loss = checkpoint.get("loss", 1.0)
 
-    for epoch in range(checkpoint.get("epoch", 0), args.epochs):
+    start_epoch = checkpoint["epoch"] + 1 if "epoch" in checkpoint else 0
+
+    for epoch in range(start_epoch, args.epochs):
         running_loss = 0.0
 
         # Iterate over the data loader batches
