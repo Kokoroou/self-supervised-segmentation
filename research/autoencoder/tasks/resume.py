@@ -146,8 +146,14 @@ def resume(args):
 
     elif platform == "Linux":
         # Resume on Linux
-        # Load checkpoint
-        checkpoint = torch.load(args.checkpoint, map_location="cpu")
+        windows_backup = pathlib.WindowsPath
+        try:
+            pathlib.WindowsPath = pathlib.PosixPath
+
+            # Load checkpoint
+            checkpoint = torch.load(args.checkpoint, map_location="cpu")
+        finally:
+            pathlib.WindowsPath = windows_backup
     else:
         raise Exception(f"Unsupported platform: {platform}")
 
