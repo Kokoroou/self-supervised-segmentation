@@ -10,7 +10,7 @@ def remove_parameters(args):
     to_delete = []
 
     for k, v in vars(args).items():
-        if not v:
+        if not v or k == "func":
             to_delete.append(k)
 
     for k in to_delete:
@@ -19,20 +19,23 @@ def remove_parameters(args):
 
 def add_parameters(args_1, args_2, task: str = "normal"):
     """
-    Add parameters in args_2 that are not set to the ones in args_1
+    Add parameters in args_2 that are not set to the ones in args_1.
+    Usually used to add parameters from a checkpoint file to the ones in the command line
 
     :param args_1: Arguments
     :param args_2: Arguments
-    :param task: Task to perform (normal, training, testing or inferring)
+    :param task: Task to perform (normal, training, resuming, testing or inferring)
     :return: New arguments with the parameters of args_1 and args_2
     """
     # Parameters that are not used in each task
     filter_out = {
         "normal": ["func"],
-        "training": [],
-        "testing": [],
+        "training": ["func"],
+        "resuming": ["func"],
+        "testing": ["wandb", "source_dir", "output_dir", "from_pretrained", "batch_size", "epochs",
+                      "learning_rate", "func"],
         "inferring": ["device", "wandb", "source_dir", "output_dir", "from_pretrained", "batch_size", "epochs",
-                      "learning_rate"]
+                      "learning_rate", "func"]
     }
 
     new_args = vars(args_1).copy()

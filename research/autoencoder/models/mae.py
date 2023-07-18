@@ -96,7 +96,7 @@ class MaskedAutoencoderViT(nn.Module):
                  img_size: int = 224,
                  patch_size: int = 16,
                  in_chans: int = 3,
-                 encoder_embed_dim: int = 1024, encoder_depth: int = 24, encoder_num_heads: int = 16,
+                 encoder_embed_dim: int = 768, encoder_depth: int = 12, encoder_num_heads: int = 12,
                  decoder_embed_dim: int = 512, decoder_depth: int = 8, decoder_num_heads: int = 16,
                  mlp_ratio: float = 4.,
                  norm_layer: Any = nn.LayerNorm,
