@@ -17,18 +17,28 @@ def remove_parameters(args):
         delattr(args, k)
 
 
-def add_parameters(args_1, args_2):
+def add_parameters(args_1, args_2, task: str = "normal"):
     """
     Add parameters in args_2 that are not set to the ones in args_1
 
     :param args_1: Arguments
     :param args_2: Arguments
+    :param task: Task to perform (normal, training, testing or inferring)
     :return: New arguments with the parameters of args_1 and args_2
     """
+    # Parameters that are not used in each task
+    filter_out = {
+        "normal": ["func"],
+        "training": [],
+        "testing": [],
+        "inferring": ["device", "wandb", "source_dir", "output_dir", "from_pretrained", "batch_size", "epochs",
+                      "learning_rate"]
+    }
+
     new_args = vars(args_1).copy()
 
     for k, v in vars(args_2).items():
-        if v and k not in new_args:
+        if v and (k not in filter_out[task] and (k not in new_args or not new_args[k])):
             new_args[k] = v
 
     new_args = Namespace(**new_args)
