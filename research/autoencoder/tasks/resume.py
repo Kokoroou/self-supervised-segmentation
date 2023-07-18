@@ -20,6 +20,9 @@ from ..utils.args import show_parameters, remove_parameters, add_parameters
 from ..utils.checkpoint import save_model
 
 
+platform = "Windows" if sys.platform.startswith("win") else "Linux"
+
+
 def add_resume_arguments(parser):
     """
     Add arguments for resume training task
@@ -130,19 +133,23 @@ def resume(args):
         args.checkpoint = checkpoint_path
     args.checkpoint = Path(args.checkpoint).absolute()
 
-    # Resume on Windows
-    posix_backup = pathlib.PosixPath
-    try:
-        pathlib.PosixPath = pathlib.WindowsPath
+    if platform == "Windows":
+        # Resume on Windows
+        posix_backup = pathlib.PosixPath
+        try:
+            pathlib.PosixPath = pathlib.WindowsPath
 
+            # Load checkpoint
+            checkpoint = torch.load(args.checkpoint, map_location="cpu")
+        finally:
+            pathlib.PosixPath = posix_backup
+
+    elif platform == "Linux":
+        # Resume on Linux
         # Load checkpoint
         checkpoint = torch.load(args.checkpoint, map_location="cpu")
-    finally:
-        pathlib.PosixPath = posix_backup
-
-    # # Resume on Linux
-    # # Load checkpoint
-    # checkpoint = torch.load(args.checkpoint, map_location="cpu")
+    else:
+        raise Exception(f"Unsupported platform: {platform}")
 
     # Add parameters from checkpoint to args
     if "args" in checkpoint:
