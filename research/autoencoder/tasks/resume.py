@@ -1,5 +1,6 @@
 import importlib
 import os
+import pathlib
 import sys
 import time
 from datetime import datetime
@@ -129,8 +130,19 @@ def resume(args):
         args.checkpoint = checkpoint_path
     args.checkpoint = Path(args.checkpoint).absolute()
 
-    # Load checkpoint
-    checkpoint = torch.load(args.checkpoint, map_location="cpu")
+    # Resume on Windows
+    posix_backup = pathlib.PosixPath
+    try:
+        pathlib.PosixPath = pathlib.WindowsPath
+
+        # Load checkpoint
+        checkpoint = torch.load(args.checkpoint, map_location="cpu")
+    finally:
+        pathlib.PosixPath = posix_backup
+
+    # # Resume on Linux
+    # # Load checkpoint
+    # checkpoint = torch.load(args.checkpoint, map_location="cpu")
 
     # Add parameters from checkpoint to args
     if "args" in checkpoint:
@@ -222,13 +234,14 @@ def resume(args):
 
     # Define the optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+    optimizer.load_state_dict(checkpoint["optimizer"])
 
     scaler = torch.cuda.amp.GradScaler(enabled=True if args.device == "cuda" else False)
 
     # Initialize best loss to a large value
-    best_loss = getattr(checkpoint, "loss", 1.0)
+    best_loss = checkpoint.get("loss", 1.0)
 
-    for epoch in range(getattr(checkpoint, "epoch", 0), args.epochs):
+    for epoch in range(checkpoint.get("epoch", 0), args.epochs):
         running_loss = 0.0
 
         # Iterate over the data loader batches
