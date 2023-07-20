@@ -5,6 +5,8 @@ from typing import Union
 import torch
 from transformers import ViTMAEConfig, ViTMAEForPreTraining, AutoImageProcessor
 
+from checkpoint import load_checkpoint
+
 
 def rename_key(state_dict):
     """
@@ -162,8 +164,9 @@ def convert_to_huggingface_model(checkpoint_path: Union[str, PathLike], model_na
     :param model_name: Name of the model to save
     :param push_to_hub: Upload model to the HuggingFace model hub
     """
-    # Load checkpoint
-    checkpoint = torch.load(checkpoint_path)
+    # Load checkpoint based on platform (Windows or Linux)
+    checkpoint = load_checkpoint(checkpoint_path)
+
     args = vars(checkpoint['args'])
     weights = checkpoint['model']
 
@@ -208,10 +211,10 @@ def convert_to_huggingface_image_processor(base_name: str, model_name: str, push
 
 
 if __name__ == '__main__':
-    checkpoint_filename = 'mae_visualize_vit_large_ganloss.pth'
-    huggingface_model_name = 'fb-vit-mae-large-ganloss'
+    checkpoint_filename = 'large_epoch150_best.pth'
+    huggingface_model_name = 'vit-mae-large-1'
     base_processor_name = 'facebook/vit-mae-large'
-    is_push_to_hub = False
+    is_push_to_hub = True
 
     current_dir = Path(__file__).parent.resolve()
     ckpt_path = current_dir.parent / 'checkpoint' / checkpoint_filename

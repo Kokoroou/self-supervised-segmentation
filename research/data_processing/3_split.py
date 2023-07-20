@@ -61,26 +61,32 @@ def split_data(data_dir, train_ratio: float = 0.8, seed: int = 42):
     segmentation_test_dir = source_dir / "test_segmentation"
 
     # Copy images to train and test directories
-    for image_path in tqdm(autoencoder_train):
-        class_name = image_path.parent.parent.name
-        (autoencoder_train_dir / class_name).mkdir(parents=True, exist_ok=True)
-        new_image_path = autoencoder_train_dir / class_name / image_path.name
-        shutil.copy(image_path, new_image_path)
-    for image_path in tqdm(autoencoder_test):
-        class_name = image_path.parent.parent.name
-        (autoencoder_test_dir / class_name).mkdir(parents=True, exist_ok=True)
-        new_image_path = autoencoder_test_dir / class_name / image_path.name
-        shutil.copy(image_path, new_image_path)
+    # for image_path in tqdm(autoencoder_train):
+    #     class_name = image_path.parent.parent.name
+    #     (autoencoder_train_dir / class_name).mkdir(parents=True, exist_ok=True)
+    #     new_image_path = autoencoder_train_dir / class_name / image_path.name
+    #     shutil.copy(image_path, new_image_path)
+    # for image_path in tqdm(autoencoder_test):
+    #     class_name = image_path.parent.parent.name
+    #     (autoencoder_test_dir / class_name).mkdir(parents=True, exist_ok=True)
+    #     new_image_path = autoencoder_test_dir / class_name / image_path.name
+    #     shutil.copy(image_path, new_image_path)
     for image_path in tqdm(segmentation_train):
-        class_name = image_path.parent.parent.name
-        (segmentation_train_dir / class_name).mkdir(parents=True, exist_ok=True)
-        new_image_path = segmentation_train_dir / class_name / image_path.name
+        (segmentation_train_dir / "images").mkdir(parents=True, exist_ok=True)
+        (segmentation_train_dir / "masks").mkdir(parents=True, exist_ok=True)
+        new_image_path = segmentation_train_dir / "images" / image_path.name
         shutil.copy(image_path, new_image_path)
+        mask_path = image_path.parent.parent / "masks" / image_path.name
+        new_mask_path = segmentation_train_dir / "masks" / image_path.name
+        shutil.copy(mask_path, new_mask_path)
     for image_path in tqdm(segmentation_test):
-        class_name = image_path.parent.parent.name
-        (segmentation_test_dir / class_name).mkdir(parents=True, exist_ok=True)
-        new_image_path = segmentation_test_dir / class_name / image_path.name
+        (segmentation_test_dir / "images").mkdir(parents=True, exist_ok=True)
+        (segmentation_test_dir / "masks").mkdir(parents=True, exist_ok=True)
+        new_image_path = segmentation_test_dir / "images" / image_path.name
         shutil.copy(image_path, new_image_path)
+        mask_path = image_path.parent.parent / "masks" / image_path.name
+        new_mask_path = segmentation_test_dir / "masks" / image_path.name
+        shutil.copy(mask_path, new_mask_path)
 
 
 if __name__ == "__main__":

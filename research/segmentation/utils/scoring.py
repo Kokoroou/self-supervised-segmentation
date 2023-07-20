@@ -3,6 +3,48 @@ from typing import Tuple
 import numpy as np
 
 
+def compute_miou(model, dataloader, device):
+    """
+    Compute mean intersection over union (mIoU) for a model
+
+    Args:
+        model: model to compute mIoU
+        dataloader: dataloader for evaluate model
+        device: device to use for evaluate model
+    Returns:
+        miou: mean intersection over union score
+    """
+    # Set model to evaluate mode
+    model.eval()
+
+    # Initialize list of intersection over union
+    ious = []
+
+    # Iterate over dataloader
+    for images, masks in dataloader:
+        # Move images and masks to device
+        images = images.to(device)
+        masks = masks.to(device)
+
+        # Forward pass
+        with torch.no_grad():
+            outputs = model(images)
+
+        # Get predicted masks
+        predicted_masks = torch.argmax(outputs, dim=1)
+
+        # Calculate intersection over union
+        iou = calculate_intersection_over_union(masks, predicted_masks)
+
+        # Append to list of intersection over union
+        ious.append(iou)
+
+    # Calculate mean intersection over union
+    miou = np.mean(ious)
+
+    return miou
+
+
 def calculate_intersection_over_union(y_true: np.ndarray, y_pred: np.ndarray) -> np.float64:
     """
     Calculate intersection over union

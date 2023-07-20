@@ -1,7 +1,6 @@
 import time
 from pathlib import Path
 
-import cv2
 import streamlit as st
 from PIL import Image
 
@@ -26,8 +25,8 @@ def main():
     default_choice = ["--Select--"]
     local_checkpoint_list = [checkpoint_path.name for checkpoint_path in checkpoint_dir.glob('*')]
     online_checkpoint_list = ["facebook/vit-mae-base", "facebook/vit-mae-large", "facebook/vit-mae-huge",
-                              "kokoroou/vit-mae-base-1",
-                              "kokoroou/fb-vit-mae-large-ganloss"]
+                              "kokoroou/fb-vit-mae-large-ganloss",
+                              "kokoroou/vit-mae-large-1"]
 
     # Add components to the sidebar
     selected_model = st.sidebar.selectbox("Select Model", default_choice +
@@ -73,10 +72,9 @@ def main():
 
                 # Load image and convert to BGR
                 image = Image.open(uploaded_file)
-                original_width, original_height = image.size
 
                 # Mask the image and reconstruct it with model Masked Autoencoder
-                result = st.session_state.model.inference(image, mask_ratio=masking_percentage / 100)
+                result = st.session_state.model.inference(image, mask_ratio=(masking_percentage / 100))
 
                 # Get the masked, reconstructed and pasted image from the result
                 masked, reconstructed, pasted = result.masked, result.reconstructed, result.pasted

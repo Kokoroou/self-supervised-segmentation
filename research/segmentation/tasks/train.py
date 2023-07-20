@@ -10,13 +10,14 @@ import validators
 import wandb
 import wget as wget
 from torch import optim
-from torch.utils.data import DataLoader
+from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
 from tqdm import tqdm
 
 from ..utils.args import show_parameters, remove_parameters, add_parameters
 from ..utils.checkpoint import load_checkpoint, save_model
+from ..utils.scoring import compute_miou
 
 
 def add_train_arguments(parser):
@@ -63,6 +64,13 @@ def add_train_arguments(parser):
         help="Directory of dataset to train"
     )
     parser.add_argument(
+        "--test-dir",
+        "-t",
+        type=str,
+        required=True,
+        help="Directory of dataset to test"
+    )
+    parser.add_argument(
         "--output-dir",
         "-o",
         type=str,
@@ -106,6 +114,11 @@ def train(args):
     args.source_dir = Path(args.source_dir).absolute()
     if not args.source_dir.exists():
         raise FileNotFoundError(f'Source directory not found: {args.source_dir}')
+
+    # Make sure test directory exists
+    args.test_dir = Path(args.test_dir).absolute()
+    if not args.test_dir.exists():
+        raise FileNotFoundError(f'Test directory not found: {args.test_dir}')
 
     # Make sure output directory exists
     args.output_dir = Path(args.output_dir).absolute()
@@ -165,7 +178,7 @@ def train(args):
     start = time.time()
 
     # Load model architecture
-    module = importlib.import_module("." + args.model, "autoencoder.models")
+    module = importlib.import_module("." + args.model, "segmentation.models")
     if "arch" in args:
         model = getattr(module, args.arch)(**vars(args))
     else:
@@ -191,6 +204,35 @@ def train(args):
     # - Create data loader
     ##############################
 
+    class DatasetSegmentation(Dataset):
+        def __init__(self, folder_path, transform=None):
+            super(DatasetSegmentation, self).__init__()
+
+            self.transform = transform
+
+            folder_path = Path(folder_path)
+
+            self.img_files = (folder_path / 'images').glob('*.*')
+            self.mask_files = []
+            for img_path in img_files:
+                self.mask_files.append(folder_path / 'masks' / img_path.name)
+
+        def __getitem__(self, index):
+            img_path = self.img_files[index]
+            mask_path = self.mask_files[index]
+            data = cv2.imread(img_path)
+            label = cv2.imread(mask_path)
+
+            if self.transform:
+                data = self.transform(data)
+                if isinstance(data, torch.Tensor):
+                    data = data.numpy()
+
+            return torch.from_numpy(data).float(), torch.from_numpy(label).float()
+
+        def __len__(self):
+            return len(self.img_files)
+
     # Define the transformations to apply to the images
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
@@ -199,10 +241,12 @@ def train(args):
     ])
 
     # Create an instance of the custom dataset
-    train_dataset = ImageFolder(str(args.source_dir), transform=transform)
+    train_dataset = DatasetSegmentation(args.source_dir, transform=transform)
+    test_dataset = DatasetSegmentation(args.test_dir, transform=transform)
 
     # Create a data loader to load the images in batches
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
     #############################
     # 4. Train model
@@ -217,7 +261,7 @@ def train(args):
         job_type="train",
         dir=args.output_dir,
         config=vars(args),
-        project="autoencoder",
+        project="segmentation",
         name=args.output_dir.name,
         mode="online" if getattr(args, "wandb", None) else "disabled"
     )
@@ -232,10 +276,12 @@ def train(args):
     # Define the optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
 
-    scaler = torch.cuda.amp.GradScaler(enabled=True if args.device == "cuda" else False)
+    # Define the loss function
+    criterion = nn.BinaryCrossEntropyLoss()
 
     # Initialize best loss to a large value
     best_loss = 1.0
+    train_iou = 0.0
 
     for epoch in range(args.epochs):
         running_loss = 0.0
@@ -249,29 +295,37 @@ def train(args):
             optimizer.zero_grad()
 
             # Forward input through the model
-            loss, pred, mask = model(inputs)
+            pred = model(inputs)
 
-            # Scale Gradients: Compute the loss's gradients
-            scaler.scale(loss).backward()
+            # Compute loss
+            loss = criterion(pred, inputs)
 
-            # Update Optimizer: Adjust learning weights
-            scaler.step(optimizer)
-            scaler.update()
+            # Backpropagate loss
+            loss.backward()
 
-            # Accumulate loss
-            running_loss += loss.mean().item()
+            # Update weights
+            optimizer.step()
+
+            # Update running loss
+            running_loss += loss.item()
 
             # Detach inputs from GPU
             inputs.detach()
 
         # Compute epoch loss
         current_loss = running_loss / len(train_loader)
-        print(f"Epoch: {epoch}, Loss: {current_loss:.4f}")
+
+        # Compute train mIoU
+        train_miou = compute_miou(model, train_loader, args.device)
+
+        # Compute test mIoU
+        test_miou = compute_miou(model, test_loader, args.device)
+
+        print(f"Epoch: {epoch}, Loss: {current_loss:.4f}, Train mIoU: {train_miou:.4f}, Test mIoU: {test_miou:.4f}")
 
         # Log metrics to wandb
-        wandb.log({"loss": current_loss})
+        wandb.log({"loss": current_loss, "train_miou": train_miou, "test_miou": test_miou})
 
-        # Check if current loss is better than best loss
         if current_loss < best_loss:
             best = True
             best_loss = current_loss

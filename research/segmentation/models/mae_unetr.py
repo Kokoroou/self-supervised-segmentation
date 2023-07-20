@@ -9,7 +9,7 @@ from timm.models.vision_transformer import PatchEmbed, Block
 from .utils.image_process import random_masking, unpatchify, patchify
 from .utils.pos_embed import get_2d_sincos_pos_embed
 
-model_name = "MaskedAutoencoderViT"  # Name of main class
+model_name = "ViTMAESegmentation"  # Name of main class
 
 
 def add_model_arguments(parser):
@@ -88,7 +88,160 @@ def add_model_arguments(parser):
     )
 
 
-class MaskedAutoencoderViT(nn.Module):
+class UNETR_decoder(nn.Module):
+    """
+    UNETR based on: "Hatamizadeh et al.,
+    UNETR: Transformers for 3D Medical Image Segmentation <https://arxiv.org/abs/2103.10504>"
+    """
+
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        img_size: Union[Sequence[int], int],
+        patch_size: Union[Sequence[int], int],
+        feature_size: int = 16,
+        hidden_size: int = 768,
+        norm_name: Union[Tuple, str] = "instance",
+        conv_block: bool = True,
+        res_block: bool = True,
+        spatial_dims: int = 3,
+    ) -> None:
+        """
+        Args:
+            in_channels: dimension of input channels.
+            out_channels: dimension of output channels.
+            img_size: dimension of input image.
+            feature_size: dimension of network feature size.
+            hidden_size: dimension of hidden layer.
+            norm_name: feature normalization type and arguments.
+            conv_block: bool argument to determine if convolutional block is used.
+            res_block: bool argument to determine if residual block is used.
+            spatial_dims: number of spatial dims.
+
+        Examples::
+
+            # for single channel input 4-channel output with image size of (96,96,96), feature size of 32 and batch norm
+            >>> net = UNETR(in_channels=1, out_channels=4, img_size=(96,96,96), feature_size=32, norm_name='batch')
+
+             # for single channel input 4-channel output with image size of (96,96), feature size of 32 and batch norm
+            >>> net = UNETR(in_channels=1, out_channels=4, img_size=96, feature_size=32, norm_name='batch', spatial_dims=2)
+
+        """
+
+        super().__init__()
+
+        img_size = ensure_tuple_rep(img_size, spatial_dims)
+        patch_size = ensure_tuple_rep(patch_size, spatial_dims)
+        self.grid_size = tuple(img_d // p_d for img_d, p_d in zip(img_size, patch_size))
+        self.hidden_size = hidden_size
+        self.encoder1 = UnetrBasicBlock(
+            spatial_dims=spatial_dims,
+            in_channels=in_channels,
+            out_channels=feature_size,
+            kernel_size=3,
+            stride=1,
+            norm_name=norm_name,
+            res_block=res_block,
+        )
+        self.encoder2 = UnetrPrUpBlock(
+            spatial_dims=spatial_dims,
+            in_channels=hidden_size,
+            out_channels=feature_size * 2,
+            num_layer=2,
+            kernel_size=3,
+            stride=1,
+            upsample_kernel_size=2,
+            norm_name=norm_name,
+            conv_block=conv_block,
+            res_block=res_block,
+        )
+        self.encoder3 = UnetrPrUpBlock(
+            spatial_dims=spatial_dims,
+            in_channels=hidden_size,
+            out_channels=feature_size * 4,
+            num_layer=1,
+            kernel_size=3,
+            stride=1,
+            upsample_kernel_size=2,
+            norm_name=norm_name,
+            conv_block=conv_block,
+            res_block=res_block,
+        )
+        self.encoder4 = UnetrPrUpBlock(
+            spatial_dims=spatial_dims,
+            in_channels=hidden_size,
+            out_channels=feature_size * 8,
+            num_layer=0,
+            kernel_size=3,
+            stride=1,
+            upsample_kernel_size=2,
+            norm_name=norm_name,
+            conv_block=conv_block,
+            res_block=res_block,
+        )
+        self.decoder5 = UnetrUpBlock(
+            spatial_dims=spatial_dims,
+            in_channels=hidden_size,
+            out_channels=feature_size * 8,
+            kernel_size=3,
+            upsample_kernel_size=2,
+            norm_name=norm_name,
+            res_block=res_block,
+        )
+        self.decoder4 = UnetrUpBlock(
+            spatial_dims=spatial_dims,
+            in_channels=feature_size * 8,
+            out_channels=feature_size * 4,
+            kernel_size=3,
+            upsample_kernel_size=2,
+            norm_name=norm_name,
+            res_block=res_block,
+        )
+        self.decoder3 = UnetrUpBlock(
+            spatial_dims=spatial_dims,
+            in_channels=feature_size * 4,
+            out_channels=feature_size * 2,
+            kernel_size=3,
+            upsample_kernel_size=2,
+            norm_name=norm_name,
+            res_block=res_block,
+        )
+        self.decoder2 = UnetrUpBlock(
+            spatial_dims=spatial_dims,
+            in_channels=feature_size * 2,
+            out_channels=feature_size,
+            kernel_size=3,
+            upsample_kernel_size=2,
+            norm_name=norm_name,
+            res_block=res_block,
+        )
+        self.out = UnetOutBlock(spatial_dims=spatial_dims, in_channels=feature_size, out_channels=out_channels)
+
+    def proj_feat(self, x, hidden_size, grid_size):
+        new_view = (x.size(0), *grid_size, hidden_size)
+        x = x.view(new_view)
+        new_axes = (0, len(x.shape) - 1) + tuple(d + 1 for d in range(len(grid_size)))
+        x = x.permute(new_axes).contiguous()
+        return x
+
+    def forward(self, x_in, x, hidden_states_out):
+        enc1 = self.encoder1(x_in)
+        x2 = hidden_states_out[3]
+        enc2 = self.encoder2(self.proj_feat(x2, self.hidden_size, self.grid_size))
+        x3 = hidden_states_out[6]
+        enc3 = self.encoder3(self.proj_feat(x3, self.hidden_size, self.grid_size))
+        x4 = hidden_states_out[9]
+        enc4 = self.encoder4(self.proj_feat(x4, self.hidden_size, self.grid_size))
+        dec4 = self.proj_feat(x, self.hidden_size, self.grid_size)
+        dec3 = self.decoder5(dec4, enc4)
+        dec2 = self.decoder4(dec3, enc3)
+        dec1 = self.decoder3(dec2, enc2)
+        out = self.decoder2(dec1, enc1)
+        return self.out(out)
+
+
+class ViTMAESegmentation(nn.Module):
     """
     Masked Autoencoder with VisionTransformer backbone
     """
@@ -220,7 +373,7 @@ class MaskedAutoencoderViT(nn.Module):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
 
-    def forward_encoder(self, x, mask_ratio):
+    def forward_encoder(self, x, mask_ratio=0):
         """
         Forward pass through the encoder of the neural network model.
 
@@ -240,7 +393,7 @@ class MaskedAutoencoderViT(nn.Module):
         x = x + self.pos_embed[:, 1:, :]
 
         # Masking image patches, only keep patches that unmasked and info for restoring
-        x, mask, ids_restore = random_masking(x, mask_ratio)
+        x, mask, ids_restore = random_masking(x, mask_ratio=mask_ratio)
 
         # Append cls token
         cls_token = self.cls_token + self.pos_embed[:, :1, :]
@@ -299,7 +452,7 @@ class MaskedAutoencoderViT(nn.Module):
         loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches
         return loss
 
-    def forward(self, imgs, mask_ratio=0.75):
+    def forward(self, imgs):
         """
         Args:
             imgs: Batch of images (shape: [N, C, H, W])
@@ -310,7 +463,7 @@ class MaskedAutoencoderViT(nn.Module):
             pred: Predicted patches
             mask: Mask of removed patches
         """
-        latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
+        latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio=0)
         pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
         loss = self.forward_loss(imgs, pred, mask)
         return loss, pred, mask
@@ -344,3 +497,45 @@ def mae_vit_huge_patch14_dec512d8b(**kwargs):
 mae_vit_base_patch16 = mae_vit_base_patch16_dec512d8b  # decoder: 512 dim, 8 blocks
 mae_vit_large_patch16 = mae_vit_large_patch16_dec512d8b  # decoder: 512 dim, 8 blocks
 mae_vit_huge_patch14 = mae_vit_huge_patch14_dec512d8b  # decoder: 512 dim, 8 blocks
+
+def vitmae_unetr_base(checkpoint):
+    model = mae_vit_base_patch16()
+
+    if checkpoint is not None:
+        model.load_state_dict(checkpoint['model'])
+
+    # Remove decoder
+    for layer in model.decoder_layers:
+        layer.remove()
+
+    # Freeze encoder
+    for layer in model.encoder_layers:
+        layer.requires_grad = False
+
+    # Add new decoder
+    model.decoder = UNETR_decoder(
+        in_channels=model.embed_dim,
+        out_channels=3,
+        img_size=model.img_size,
+        patch_size=model.patch_size,
+    )
+
+    # Change forward function
+    def forward(self, imgs):
+        """
+        Args:
+            imgs: Batch of images (shape: [N, C, H, W])
+            mask_ratio: Ratio of masked patches
+
+        Returns:
+            loss: Masked autoencoder loss
+            pred: Predicted patches
+            mask: Mask of removed patches
+        """
+        latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio=0)
+        pred = self.decoder(latent, imgs)
+
+        return pred
+    model.forward = types.MethodType(forward, model)
+
+    return model

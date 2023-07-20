@@ -1,25 +1,18 @@
-import pathlib
-
-import torch
+from PIL import Image
+from transformers import AutoImageProcessor, ViTMAEModel
 
 if __name__ == "__main__":
-    path = "autoencoder/checkpoint/large_epoch75_best.pth"
+    path = "data/processed/PolypGen2021_MultiCenterData_v3/positive/images/C1_104OLCV1_100H0002.jpg"
+    image = Image.open(path)
 
-    posix_backup = pathlib.PosixPath
-    try:
-        pathlib.PosixPath = pathlib.WindowsPath
+    image_processor = AutoImageProcessor.from_pretrained("kokoroou/vit-mae-large-1")
+    model = ViTMAEModel.from_pretrained("kokoroou/vit-mae-large-1")
 
-        # Load checkpoint
-        checkpoint = torch.load(path, map_location="cpu")
-    finally:
-        pathlib.PosixPath = posix_backup
+    inputs = image_processor(images=image, return_tensors="pt")
+    outputs = model(**inputs)
 
-    print(checkpoint.keys())
+    print(outputs.last_hidden_state.shape,
+          outputs.mask.shape,
+          outputs.ids_restore.shape,)
 
-    setattr(checkpoint["args"], "wandb_id", "xupn6dzw")
-
-    print(vars(checkpoint["args"]).keys())
-
-    torch.save(checkpoint, path)
-
-
+    print(outputs.ids_restore)
