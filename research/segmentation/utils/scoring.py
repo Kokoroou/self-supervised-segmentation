@@ -1,15 +1,16 @@
 from typing import Tuple
 
 import numpy as np
+import torch
 
 
-def compute_miou(model, dataloader, device):
+def compute_miou(model, data_loader, device):
     """
     Compute mean intersection over union (mIoU) for a model
 
     Args:
         model: model to compute mIoU
-        dataloader: dataloader for evaluate model
+        data_loader: DataLoader for evaluate model
         device: device to use for evaluate model
     Returns:
         miou: mean intersection over union score
@@ -20,8 +21,8 @@ def compute_miou(model, dataloader, device):
     # Initialize list of intersection over union
     ious = []
 
-    # Iterate over dataloader
-    for images, masks in dataloader:
+    # Iterate over batches
+    for images, masks in data_loader:
         # Move images and masks to device
         images = images.to(device)
         masks = masks.to(device)
@@ -31,7 +32,7 @@ def compute_miou(model, dataloader, device):
             outputs = model(images)
 
         # Get predicted masks
-        predicted_masks = torch.argmax(outputs, dim=1)
+        predicted_masks = torch.argmax(outputs, dim=1).numpy()
 
         # Calculate intersection over union
         iou = calculate_intersection_over_union(masks, predicted_masks)

@@ -26,7 +26,7 @@ def main():
     local_checkpoint_list = [checkpoint_path.name for checkpoint_path in checkpoint_dir.glob('*')]
     online_checkpoint_list = ["facebook/vit-mae-base", "facebook/vit-mae-large", "facebook/vit-mae-huge",
                               "kokoroou/fb-vit-mae-large-ganloss",
-                              "kokoroou/vit-mae-large-1"]
+                              "kokoroou/vit-mae-base-polyp", "kokoroou/vit-mae-large-polyp", ]
 
     # Add components to the sidebar
     selected_model = st.sidebar.selectbox("Select Model", default_choice +

@@ -5,11 +5,13 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+import cv2
 import torch
 import validators
 import wandb
 import wget as wget
-from torch import optim
+from PIL import Image
+from torch import optim, nn
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
@@ -187,7 +189,7 @@ def train(args):
 
     if getattr(args, "from_pretrained", False):
         # Load model weights
-        model.load_state_dict(checkpoint["model"])
+        model.load_custom_state_dict(checkpoint["model"])
 
     # Move model to GPU for better performance
     model.to(args.device)
@@ -212,23 +214,28 @@ def train(args):
 
             folder_path = Path(folder_path)
 
-            self.img_files = (folder_path / 'images').glob('*.*')
+            self.img_files = list((folder_path / 'images').glob('*.*'))
             self.mask_files = []
-            for img_path in img_files:
+            for img_path in self.img_files:
                 self.mask_files.append(folder_path / 'masks' / img_path.name)
 
         def __getitem__(self, index):
             img_path = self.img_files[index]
             mask_path = self.mask_files[index]
-            data = cv2.imread(img_path)
-            label = cv2.imread(mask_path)
+            data = Image.open(str(img_path))
+            label = Image.open(str(mask_path))
 
             if self.transform:
                 data = self.transform(data)
-                if isinstance(data, torch.Tensor):
-                    data = data.numpy()
 
-            return torch.from_numpy(data).float(), torch.from_numpy(label).float()
+                label_transform = transforms.Compose([
+                    transforms.Resize(data.shape[1:]),
+                    transforms.ToTensor()
+                ])
+
+                label = label_transform(label)
+
+            return data, label
 
         def __len__(self):
             return len(self.img_files)
@@ -277,17 +284,16 @@ def train(args):
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
 
     # Define the loss function
-    criterion = nn.BinaryCrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss()
 
     # Initialize best loss to a large value
     best_loss = 1.0
-    train_iou = 0.0
 
     for epoch in range(args.epochs):
         running_loss = 0.0
 
         # Iterate over the data loader batches
-        for inputs, _ in tqdm(train_loader):
+        for inputs, labels in tqdm(train_loader):
             # Move the data to the proper device (GPU or CPU)
             inputs = inputs.to(args.device)
 
@@ -295,10 +301,10 @@ def train(args):
             optimizer.zero_grad()
 
             # Forward input through the model
-            pred = model(inputs)
+            preds = model(inputs)
 
             # Compute loss
-            loss = criterion(pred, inputs)
+            loss = criterion(preds, labels)
 
             # Backpropagate loss
             loss.backward()

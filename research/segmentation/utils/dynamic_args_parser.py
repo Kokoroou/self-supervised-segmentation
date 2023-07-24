@@ -27,7 +27,7 @@ def get_args():
     _args, _ = parser.parse_known_args()
 
     # Add model's specific arguments
-    module = importlib.import_module("." + _args.model, "autoencoder.models")
+    module = importlib.import_module("." + _args.model, "segmentation.models")
     add_model_arguments = getattr(module, "add_model_arguments")
     if "train" in sys.argv:
         add_model_arguments(parser_train)

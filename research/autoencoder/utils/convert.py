@@ -211,9 +211,9 @@ def convert_to_huggingface_image_processor(base_name: str, model_name: str, push
 
 
 if __name__ == '__main__':
-    checkpoint_filename = 'large_epoch150_best.pth'
-    huggingface_model_name = 'vit-mae-large-1'
-    base_processor_name = 'facebook/vit-mae-large'
+    checkpoint_filename = 'base_epoch400_best.pth'
+    huggingface_model_name = 'vit-mae-base-polyp'
+    base_processor_name = 'facebook/vit-mae-base'
     is_push_to_hub = True
 
     current_dir = Path(__file__).parent.resolve()
