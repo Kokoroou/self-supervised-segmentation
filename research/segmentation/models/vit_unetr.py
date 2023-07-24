@@ -186,7 +186,10 @@ class ViTMAESeg(nn.Module):
         )
 
         """ Output """
-        self.output = nn.Conv2d(64, 1, kernel_size=1, padding=0)
+        self.output = nn.Sequential(
+            nn.Conv2d(64, 1, kernel_size=1, padding=0),
+            nn.Softmax(dim=3)
+        )
 
     def load_custom_state_dict(self, state_dict):
 
@@ -194,9 +197,6 @@ class ViTMAESeg(nn.Module):
         for name, param in state_dict.items():
             if name not in own_state:
                 continue
-            # if isinstance(param, Parameter):
-            #     # backwards compatibility for serialized parameters
-            #     param = param.data
             own_state[name].copy_(param)
 
     def forward(self, inputs):

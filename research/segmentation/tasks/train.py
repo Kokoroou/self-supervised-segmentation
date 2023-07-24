@@ -5,7 +5,6 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-import cv2
 import torch
 import validators
 import wandb
@@ -14,7 +13,6 @@ from PIL import Image
 from torch import optim, nn
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-from torchvision.datasets import ImageFolder
 from tqdm import tqdm
 
 from ..utils.args import show_parameters, remove_parameters, add_parameters
@@ -76,7 +74,7 @@ def add_train_arguments(parser):
         "--output-dir",
         "-o",
         type=str,
-        default="./research/autoencoder/checkpoint",
+        default="./research/segmentation/checkpoint",
         help="Directory for save checkpoint and logging information",
     )
     parser.add_argument(
@@ -229,7 +227,8 @@ def train(args):
                 data = self.transform(data)
 
                 label_transform = transforms.Compose([
-                    transforms.Resize(data.shape[1:]),
+                    transforms.Grayscale(),
+                    transforms.Resize(data.shape[1:], interpolation=Image.NEAREST),
                     transforms.ToTensor()
                 ])
 
@@ -258,7 +257,7 @@ def train(args):
     #############################
     # 4. Train model
     # - Initialize wandb if enabled
-    # - Define optimizer, scaler, best loss
+    # - Define optimizer, criterion, best loss
     # - Iterate over the data loader batches and train the model
     # - Save best checkpoint if loss is improved else save last checkpoint
     #############################
@@ -273,8 +272,9 @@ def train(args):
         mode="online" if getattr(args, "wandb", None) else "disabled"
     )
 
-    # Save wandb id to args for later resume training
-    setattr(args, "wandb_id", wandb.run.id)
+    if getattr(args, "wandb", None):
+        # Save wandb id to args for later resume training
+        setattr(args, "wandb_id", wandb.run.id)
 
     print()
     print("-" * 60)
