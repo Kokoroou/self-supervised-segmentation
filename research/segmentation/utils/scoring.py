@@ -3,6 +3,7 @@ from typing import Tuple
 
 import numpy as np
 import torch
+from tqdm import tqdm
 
 
 def compute_miou(model, data_loader, device):
@@ -23,7 +24,7 @@ def compute_miou(model, data_loader, device):
     ious = []
 
     # Iterate over batches
-    for images, masks in data_loader:
+    for images, masks in tqdm(data_loader, desc="Computing mIoU"):
         # Move images and masks to device
         images = images.to(device)
         masks = masks.to(device)

@@ -293,7 +293,7 @@ def train(args):
         running_loss = 0.0
 
         # Iterate over the data loader batches
-        for inputs, labels in tqdm(train_loader):
+        for inputs, labels in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{args.epochs}"):
             # Move the data to the proper device (GPU or CPU)
             inputs = inputs.to(args.device)
             labels = labels.to(args.device)
