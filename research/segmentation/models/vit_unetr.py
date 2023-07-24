@@ -188,7 +188,7 @@ class ViTMAESeg(nn.Module):
         """ Output """
         self.output = nn.Sequential(
             nn.Conv2d(64, 1, kernel_size=1, padding=0),
-            nn.Softmax(dim=3)
+            nn.Sigmoid()
         )
 
     def load_custom_state_dict(self, state_dict):
