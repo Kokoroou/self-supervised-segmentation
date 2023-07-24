@@ -296,6 +296,7 @@ def train(args):
         for inputs, labels in tqdm(train_loader):
             # Move the data to the proper device (GPU or CPU)
             inputs = inputs.to(args.device)
+            labels = labels.to(args.device)
 
             # Zero the gradients for every batch
             optimizer.zero_grad()
