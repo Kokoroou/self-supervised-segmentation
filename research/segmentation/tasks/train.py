@@ -284,7 +284,7 @@ def train(args):
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
 
     # Define the loss function
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.BCELoss()
 
     # Initialize best loss to a large value
     best_loss = 1.0
