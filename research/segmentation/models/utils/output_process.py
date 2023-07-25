@@ -2,43 +2,27 @@ import cv2
 import numpy as np
 import torch
 
-from .image_process import unpatchify
 
-
-def process_output(image, output, patch_size=16):
-    _, pred, mask = output
-
+def process_output(image, output):
     # Visualize the mask
-    mask = mask.detach().cpu()
-    mask = mask.unsqueeze(-1).repeat(1, 1, patch_size ** 2 * 3)  # (N, H*W, p*p*3)
-    mask = unpatchify(mask, patch_size)  # 1 is removing, 0 is keeping
-    mask = torch.einsum('nchw->nhwc', mask)
-    mask = mask[0]
+    mask = output.detach().cpu()
+    mask = torch.round(mask)
+    mask = mask[0][0]
+    # mask = torch.einsum('nchw->nhwc', mask)
+    # mask = mask[0]
     mask = mask.numpy().astype(np.uint8)
 
     # Resize the mask to the original image size
     mask = cv2.resize(mask, image.shape[:2][::-1], interpolation=cv2.INTER_NEAREST)
 
-    # Masked image
-    masked = image * (1 - mask)
+    # Rescale the segmentation mask to 0-255
+    mask_max = mask.max() if mask.max() > 0 else 1
+    mask = mask / mask_max * 255
 
-    # Imagenet normalization
-    imagenet_mean = np.array([0.485, 0.456, 0.406])
-    imagenet_std = np.array([0.229, 0.224, 0.225])
+    mask = mask.astype(np.uint8)
+    mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
 
-    # Reconstructed image
-    reconstructed = pred.detach().cpu()
-    reconstructed = unpatchify(reconstructed, patch_size)
-    reconstructed = torch.einsum('nchw->nhwc', reconstructed)
-    reconstructed = reconstructed[0]
-    reconstructed = torch.clip((reconstructed * imagenet_std + imagenet_mean) * 255, 0, 255)
-    reconstructed = reconstructed.numpy().astype(np.uint8)
-
-    reconstructed = cv2.resize(reconstructed, image.shape[:2][::-1])
-
-    pasted = masked + reconstructed * mask
-
-    return masked, reconstructed, pasted
+    return mask
 
 
 def concat_output(**kwargs):

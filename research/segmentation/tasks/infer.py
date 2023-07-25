@@ -26,7 +26,7 @@ def add_infer_arguments(parser):
         "-m",
         type=str,
         required=True,
-        help="Name of the autoencoder architecture to use",
+        help="Name of the segmentation architecture to use",
     )
     parser.add_argument(
         "--checkpoint",
@@ -125,7 +125,7 @@ def infer(args):
     start_time = time.time()
 
     # Load model architecture
-    module = importlib.import_module("." + args.model, "autoencoder.models")
+    module = importlib.import_module("." + args.model, "segmentation.models")
     if "arch" in args:
         model = getattr(module, args.arch)(**vars(args))
     else:
@@ -156,8 +156,8 @@ def infer(args):
 
     # Inference
     input_image = process_input(image, img_size=model.img_size)
-    output = model(input_image, mask_ratio=args.mask_ratio)
-    masked, reconstructed, pasted = process_output(image, output, patch_size=model.patch_size)
+    output = model(input_image)
+    mask = process_output(image, output)
 
     if not getattr(args, "no_verbose", False):
         print(f"Inference done in {time.time() - start_time:.2f} seconds")
@@ -166,20 +166,15 @@ def infer(args):
 
     # Save output image
     if hasattr(args, "save"):
-        cv2.imwrite(str(args.output_path), concat_output(image=image, masked=masked,
-                                                         reconstructed=reconstructed, pasted=pasted))
+        cv2.imwrite(str(args.output_path), concat_output(image=image, mask=mask))
 
     # Visualize output image
     if hasattr(args, "visualize"):
         image = imutils.resize(image, height=700)
-        masked = imutils.resize(masked, height=700)
-        reconstructed = imutils.resize(reconstructed, height=700)
-        pasted = imutils.resize(pasted, height=700)
+        mask = imutils.resize(mask, height=700)
 
         # Show output image
         cv2.imshow('image', image)
-        cv2.imshow('masked', masked)
-        cv2.imshow('reconstructed', reconstructed)
-        cv2.imshow('pasted', pasted)
+        cv2.imshow('mask', mask)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
