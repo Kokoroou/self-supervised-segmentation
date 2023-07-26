@@ -96,7 +96,6 @@ class ViTMAESeg(nn.Module):
                  encoder_embed_dim: int = 768, encoder_depth: int = 12, encoder_num_heads: int = 12,
                  mlp_ratio: float = 4.,
                  norm_layer: Any = nn.LayerNorm,
-                 norm_pix_loss: bool = False,
                  **kwargs):
         super(ViTMAESeg, self).__init__()
 
@@ -208,19 +207,12 @@ class ViTMAESeg(nn.Module):
         # Add positional embedding without classification token
         x = x + self.pos_embed[:, 1:, :]
 
-        # # Append cls token
-        # cls_token = self.cls_token + self.pos_embed[:, :1, :]
-        # cls_tokens = cls_token.expand(x.shape[0], -1, -1)
-        # x = torch.cat((cls_tokens, x), dim=1)
-
         # Apply Transformer blocks
         for i, blk in enumerate(self.blocks):
             x = blk(x)
 
             if (i + 1) in skip_connection_index:
                 skip_connections.append(x)
-
-        # x = self.norm(x)
 
         """ CNN Decoder """
         z3, z6, z9, z12 = skip_connections

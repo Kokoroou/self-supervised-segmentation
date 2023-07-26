@@ -8,8 +8,6 @@ def process_output(image, output):
     mask = output.detach().cpu()
     mask = torch.round(mask)
     mask = mask[0][0]
-    # mask = torch.einsum('nchw->nhwc', mask)
-    # mask = mask[0]
     mask = mask.numpy().astype(np.uint8)
 
     # Resize the mask to the original image size

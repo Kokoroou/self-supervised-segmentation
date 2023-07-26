@@ -1,5 +1,7 @@
-from transformers import AutoImageProcessor, SegformerForSemanticSegmentation
+from transformers import AutoImageProcessor
+
 from ui.models.segmentation.segmentation_result import SegmentorResult
+from ui.models.segmentation.vit_seg.vit_seg import ViTMAESegModel
 
 
 class Segmentor:
@@ -9,7 +11,7 @@ class Segmentor:
         :param model: Model name or checkpoint directory
         """
         self.image_processor = AutoImageProcessor.from_pretrained(model)
-        self.model = SegformerForSemanticSegmentation.from_pretrained(model)
+        self.model = ViTMAESegModel.from_pretrained(model)
 
     def inference(self, image):
         """

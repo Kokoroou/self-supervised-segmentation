@@ -28,21 +28,22 @@ class SegmentorResult:
         :return: Segmentation mask
         """
         # Get segmentation mask from the output object
-        seg = self.output.logits.detach().cpu()
+        mask = self.output.detach().cpu()
 
-        # Get highest probability for each pixel
-        seg = torch.argmax(seg, dim=1)
+        mask = torch.round(mask)
+        mask = mask[0][0]
+        mask = mask.numpy().astype(np.uint8)
 
-        # Remove the batch dimension
-        seg = torch.einsum('nhw->hw', seg)
-
-        # Resize the segmentation mask to the original image size
-        seg = cv2.resize(seg.numpy(), self.input.shape[:2][::-1], interpolation=cv2.INTER_NEAREST).astype(np.uint16)
+        # Resize the mask to the original image size
+        mask = cv2.resize(mask, self.input.shape[:2][::-1], interpolation=cv2.INTER_NEAREST)
 
         # Rescale the segmentation mask to 0-255
-        seg = seg / seg.max() * 255
+        mask_max = mask.max() if mask.max() > 0 else 1
+        mask = mask / mask_max * 255
 
-        self.segment = seg.astype(np.uint16)
+        mask = mask.astype(np.uint8)
+
+        self.segment = mask
 
         return self.segment
 
@@ -60,7 +61,10 @@ class SegmentorResult:
 
         # Get the color for each pixel in the segmentation mask
         seg_color = np.zeros((self.segment.shape[0], self.segment.shape[1], 3), dtype=np.uint8)
+
         for i, seg_value in enumerate(seg_values):
+            if seg_value == 0:
+                continue
             seg_color[self.segment == seg_value] = colors[i]
 
         # Draw the segmentation mask on the input image, with transparency

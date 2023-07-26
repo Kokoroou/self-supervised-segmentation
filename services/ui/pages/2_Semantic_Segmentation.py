@@ -1,7 +1,6 @@
 import time
 from pathlib import Path
 
-import cv2
 import streamlit as st
 from PIL import Image
 
@@ -25,8 +24,7 @@ def main():
 
     default_choice = ["--Select--"]
     local_checkpoint_list = [checkpoint_path.name for checkpoint_path in checkpoint_dir.glob('*')]
-    online_checkpoint_list = ["nvidia/segformer-b0-finetuned-ade-512-512",
-                              "nvidia/segformer-b5-finetuned-ade-640-640"]
+    online_checkpoint_list = []
 
     # Add components to the sidebar
     selected_model = st.sidebar.selectbox("Select Model", default_choice +
@@ -69,7 +67,6 @@ def main():
 
                 # Load image and convert to BGR
                 image = Image.open(uploaded_file)
-                original_width, original_height = image.size
 
                 # Mask the image and reconstruct it with model Masked Autoencoder
                 result = st.session_state.model.inference(image)
