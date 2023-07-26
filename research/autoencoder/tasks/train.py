@@ -11,12 +11,12 @@ import wandb
 import wget as wget
 from torch import optim
 from torch.utils.data import DataLoader
-from torchvision import transforms
 from torchvision.datasets import ImageFolder
 from tqdm import tqdm
 
 from ..utils.args import show_parameters, remove_parameters, add_parameters
 from ..utils.checkpoint import load_checkpoint, save_model
+from ..utils.dataset import get_train_transform
 
 
 def add_train_arguments(parser):
@@ -33,6 +33,11 @@ def add_train_arguments(parser):
         help="Name of the autoencoder architecture to use",
     )
     parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Whether to resume training or not",
+    )
+    parser.add_argument(
         "--from-pretrained",
         action="store_true",
         help="Whether to load pretrained model or not",
@@ -41,7 +46,7 @@ def add_train_arguments(parser):
         "--checkpoint",
         "-c",
         type=str,
-        required=("--from-pretrained" in sys.argv),
+        required=("--from-pretrained" in sys.argv or "--resume" in sys.argv),
         help="Path to pretrained model",
     )
     parser.add_argument(
@@ -56,10 +61,16 @@ def add_train_arguments(parser):
         help="Whether to use wandb to log training information or not"
     )
     parser.add_argument(
+        "--wandb-id",
+        type=str,
+        required=("--wandb" in sys.argv and "--resume" not in sys.argv),
+        help="ID of wandb run to resume"
+    )
+    parser.add_argument(
         "--source-dir",
         "-s",
         type=str,
-        required=True,
+        required=("--resume" not in sys.argv),
         help="Directory of dataset to train"
     )
     parser.add_argument(
@@ -78,7 +89,7 @@ def add_train_arguments(parser):
     parser.add_argument(
         "--epochs",
         type=int,
-        default=200,
+        required=True,
         help="Number of training epochs"
     )
     parser.add_argument(
@@ -116,7 +127,7 @@ def train(args):
         args.device = "cpu"
 
     checkpoint = None
-    if args.from_pretrained:
+    if hasattr(args, "checkpoint"):
         # When train from pretrain, check if checkpoint is a valid path or downloadable url
         if not os.path.exists(args.checkpoint) and not validators.url(args.checkpoint):
             raise FileNotFoundError(f'Checkpoint file not found: {args.checkpoint}')
@@ -139,7 +150,7 @@ def train(args):
 
         # Add parameters from checkpoint to args
         if "args" in checkpoint:
-            args = add_parameters(args, checkpoint["args"], task="training")
+            args = add_parameters(args, checkpoint["args"], task="training" if not args.resume else "resuming")
 
     # Create new checkpoint directory for each training
     if hasattr(args, "arch"):
@@ -172,7 +183,7 @@ def train(args):
         model_name = getattr(module, "model_name")
         model = getattr(module, model_name)(**vars(args))
 
-    if getattr(args, "from_pretrained", False):
+    if hasattr(args, "checkpoint"):
         # Load model weights
         model.load_state_dict(checkpoint["model"])
 
@@ -191,15 +202,8 @@ def train(args):
     # - Create data loader
     ##############################
 
-    # Define the transformations to apply to the images
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-
     # Create an instance of the custom dataset
-    train_dataset = ImageFolder(str(args.source_dir), transform=transform)
+    train_dataset = ImageFolder(str(args.source_dir), transform=get_train_transform())
 
     # Create a data loader to load the images in batches
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
@@ -218,26 +222,37 @@ def train(args):
         dir=args.output_dir,
         config=vars(args),
         project="autoencoder",
-        name=args.output_dir.name,
-        mode="online" if getattr(args, "wandb", None) else "disabled"
+        id=getattr(args, "wandb_id", None),
+        name=args.output_dir.name if getattr(args, "wandb", False) and not hasattr(args, "resume") else None,
+        resume="must" if getattr(args, "wandb", False) and hasattr(args, "resume") else None,
+        mode="online" if getattr(args, "wandb", False) else "disabled"
     )
 
-    # Save wandb id to args for later resume training
-    setattr(args, "wandb_id", wandb.run.id)
+    if not hasattr(args, "wandb_id"):
+        # Save wandb id to args for later resume training
+        setattr(args, "wandb_id", wandb.run.id)
 
     print()
     print("-" * 60)
     print()
 
-    # Define the optimizer
+    # Define the optimizer and scaler
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
-
     scaler = torch.cuda.amp.GradScaler(enabled=True if args.device == "cuda" else False)
 
-    # Initialize best loss to a large value
+    # Initialize best loss to a large value and start epoch to 0
     best_loss = 1.0
+    start_epoch = 0
 
-    for epoch in range(args.epochs):
+    if hasattr(args, "checkpoint"):
+        # Load optimizer state
+        optimizer.load_state_dict(checkpoint["optimizer"])
+
+        best_loss = checkpoint.get("loss", 1.0)
+
+        start_epoch = checkpoint["epoch"] + 1 if "epoch" in checkpoint else 0
+
+    for epoch in range(start_epoch, args.epochs):
         running_loss = 0.0
 
         # Iterate over the data loader batches

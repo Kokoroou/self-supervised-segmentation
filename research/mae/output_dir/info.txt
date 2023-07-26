@@ -1,1 +1,0 @@
-Best epoch checkpoint: 287

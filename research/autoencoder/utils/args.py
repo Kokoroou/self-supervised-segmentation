@@ -30,12 +30,16 @@ def add_parameters(args_1, args_2, task: str = "normal"):
     # Parameters that are not used in each task
     filter_out = {
         "normal": ["func"],
-        "training": ["func"],
-        "resuming": ["func"],
-        "testing": ["wandb", "source_dir", "output_dir", "from_pretrained", "batch_size", "epochs",
-                      "learning_rate", "func"],
-        "inferring": ["device", "wandb", "wandb_id", "source_dir", "output_dir", "from_pretrained", "batch_size", "epochs",
-                      "learning_rate", "func"]
+        "training": ["resume", "from_pretrained", "checkpoint", "device", "wandb", "wandb_id",
+                     "source_dir", "output_dir",
+                     "batch_size", "epochs", "learning_rate", "func"],
+        "resuming": ["resume", "from_pretrained", "checkpoint", "device", "wandb", "epochs", "func"],
+        "testing": ["resume", "from_pretrained", "checkpoint", "device", "wandb", "wandb_id",
+                     "source_dir", "output_dir",
+                     "batch_size", "epochs", "learning_rate", "func"],
+        "inferring": ["resume", "from_pretrained", "checkpoint", "device", "wandb", "wandb_id",
+                      "source_dir", "output_dir",
+                      "batch_size", "epochs", "learning_rate", "func"]
     }
 
     new_args = vars(args_1).copy()
