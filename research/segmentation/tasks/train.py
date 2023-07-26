@@ -61,12 +61,6 @@ def add_train_arguments(parser):
         help="Whether to use wandb to log training information or not"
     )
     parser.add_argument(
-        "--wandb-id",
-        type=str,
-        required=("--wandb" in sys.argv and "--resume" not in sys.argv),
-        help="ID of wandb run to resume"
-    )
-    parser.add_argument(
         "--source-dir",
         "-s",
         type=str,
