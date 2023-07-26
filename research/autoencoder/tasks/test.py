@@ -5,17 +5,18 @@ import time
 from pathlib import Path
 
 import cv2
+import numpy as np
 import torch
 import validators
 import wget
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
+from tqdm import tqdm
 
-from ..models.utils.input_process import process_input
+from ..models.utils.dataset import get_test_transform, get_inverse_test_transform
 from ..models.utils.output_process import process_output, concat_output
 from ..utils.args import show_parameters, remove_parameters, add_parameters
 from ..utils.checkpoint import load_checkpoint
-from ..utils.dataset import get_test_transform
 
 
 def add_test_arguments(parser):
@@ -58,6 +59,7 @@ def add_test_arguments(parser):
     )
     parser.add_argument(
         "--output-dir",
+        "-o",
         type=str,
         required=("--save" in sys.argv),
         help="Directory for save test result",
@@ -78,9 +80,8 @@ def test(args):
     # 1. Prepare 'args'
     # - Make sure all input and output directory are valid
     # - Use the proper device for training ("cuda" or "cpu")
-    # - If train model from pretrained, make sure checkpoint path is valid (exist path or downloadable url),
+    # - Make sure checkpoint path is valid (exist path or downloadable url),
     # then load checkpoint and update model architecture parameters from checkpoint to args
-    # - Create new output directory based on model architecture name and current datetime
     ##############################
 
     # Make sure source directory exists
@@ -127,8 +128,8 @@ def test(args):
     ##############################
     # 2. Prepare model
     # - Load model architecture
-    # - Load model weights if train from pretrained
-    # - Set model to train mode
+    # - Load model weights
+    # - Set model to evaluation mode
     ##############################
     start = time.time()
 
@@ -150,7 +151,10 @@ def test(args):
     # Set model to evaluation mode
     model.eval()
 
-    print(f"Model loaded in {time.time() - start:.2f} seconds\n")
+    print(f"Model loaded in {time.time() - start:.2f} seconds")
+
+    print("-" * 60)
+    print()
 
     ##############################
     # 3. Prepare data
@@ -159,40 +163,42 @@ def test(args):
     ##############################
 
     # Create an instance of the custom dataset
-    test_dataset = ImageFolder(str(args.source_dir), transform=get_test_transform())
+    test_dataset = ImageFolder(str(args.source_dir), transform=get_test_transform(model=args.model))
 
     # Create a data loader to load the images in batches
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
 
     #############################
-    # 4. Train model
-    # - Initialize wandb if enabled
-    # - Define optimizer, scaler, best loss
-    # - Iterate over the data loader batches and train the model
-    # - Save best checkpoint if loss is improved else save last checkpoint
+    # 4. Test model
+    # - Iterate over the data loader batches and test the model
+    # - Save test result if 'save' is True
     #############################
 
-    print()
-    print("-" * 60)
-    print()
-
-    # Iterate over the batches of images and labels
-    for batch_idx, (images, _) in enumerate(test_loader):
-        start = time.time()
-
-        # Save output image
-        if hasattr(args, "save"):
+    if hasattr(args, "save"):
+        for batch_idx, (images, _) in tqdm(enumerate(test_loader), desc=f"Testing {args.model}"):
+            # Inferring each image in batch. Need to modify this part to infer all images in batch at once
             for image_idx, image in enumerate(images):
-                image = image.permute(1, 2, 0).to(args.device).numpy()
+                # Change image from RGB to BGR and add batch dimension
+                input_image = torch.flip(image, dims=(0,))
+                input_image = input_image.unsqueeze(0)
 
-                input_image = process_input(image, img_size=model.img_size)
+                # Get original image (resized)
+                org_image = get_inverse_test_transform(model=args.model)(image)
+                org_image = cv2.cvtColor(np.array(org_image), cv2.COLOR_RGB2BGR)
+
                 output = model(input_image, mask_ratio=args.mask_ratio)
-                masked, reconstructed, pasted = process_output(image, output, patch_size=model.patch_size)
+                masked, reconstructed, pasted = process_output(org_image, output, patch_size=model.patch_size)
 
-                cv2.imwrite(str(args.output_dir) + f"{batch_idx * images[0] + image_idx}.jpg",
-                            concat_output(image=image, masked=masked, reconstructed=reconstructed, pasted=pasted))
+                new_image_filename = f"{batch_idx * args.batch_size + image_idx}.jpg"
+                new_image_path = args.output_dir / new_image_filename
 
-        else:
+                cv2.imwrite(str(new_image_path),
+                            concat_output(image=org_image, masked=masked, reconstructed=reconstructed, pasted=pasted))
+
+    else:
+        for batch_idx, (images, _) in enumerate(test_loader):
+            start = time.time()
+
             # Move images and labels to GPU if available
             images = images.to(args.device)
 

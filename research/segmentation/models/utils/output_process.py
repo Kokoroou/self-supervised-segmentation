@@ -34,9 +34,7 @@ def concat_output(**kwargs):
     :return: Concatenated image.
     """
     font = cv2.FONT_HERSHEY_SIMPLEX
-    font_scale = 3
     color = (255, 255, 255)
-    thickness = 2
     padding = 10  # Padding between image and text
 
     images = []
@@ -44,6 +42,10 @@ def concat_output(**kwargs):
         if image is not None:
             # Get the width and height of the image
             image_height, image_width, image_channel = image.shape
+
+            # Get the relative font scale and thickness based on the image size
+            font_scale = image_height / 256
+            thickness = round(font_scale)
 
             # Get the width and height of the text box
             text_width, text_height = cv2.getTextSize(name, font, font_scale, thickness)[0]

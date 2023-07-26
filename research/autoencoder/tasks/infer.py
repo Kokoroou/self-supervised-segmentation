@@ -9,7 +9,7 @@ import imutils
 import validators
 import wget as wget
 
-from ..models.utils.input_process import process_input
+from ..models.utils.dataset import get_test_transform
 from ..models.utils.output_process import process_output, concat_output
 from ..utils.args import show_parameters, remove_parameters, add_parameters
 from ..utils.checkpoint import load_checkpoint
@@ -49,9 +49,10 @@ def add_infer_arguments(parser):
     )
     parser.add_argument(
         "--output-path",
+        "-o",
         type=str,
         required=("--save" in sys.argv),
-        help="Directory for save inference result",
+        help="Image path for save inference result",
     )
     parser.add_argument(
         "--visualize",
@@ -155,7 +156,9 @@ def infer(args):
     start_time = time.time()
 
     # Inference
-    input_image = process_input(image, img_size=model.img_size)
+    input_image = get_test_transform(model=args.model)(image)
+    input_image = input_image.unsqueeze(0)
+
     output = model(input_image, mask_ratio=args.mask_ratio)
     masked, reconstructed, pasted = process_output(image, output, patch_size=model.patch_size)
 

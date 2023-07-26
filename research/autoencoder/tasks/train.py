@@ -14,9 +14,9 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 from tqdm import tqdm
 
+from ..models.utils.dataset import get_train_transform
 from ..utils.args import show_parameters, remove_parameters, add_parameters
 from ..utils.checkpoint import load_checkpoint, save_model
-from ..utils.dataset import get_train_transform
 
 
 def add_train_arguments(parser):
@@ -194,7 +194,10 @@ def train(args):
     # Set model to train mode
     model.train()
 
-    print(f"Model loaded in {time.time() - start:.2f} seconds\n")
+    print(f"Model loaded in {time.time() - start:.2f} seconds")
+
+    print("-" * 60)
+    print()
 
     ##############################
     # 3. Prepare data
@@ -203,7 +206,7 @@ def train(args):
     ##############################
 
     # Create an instance of the custom dataset
-    train_dataset = ImageFolder(str(args.source_dir), transform=get_train_transform())
+    train_dataset = ImageFolder(str(args.source_dir), transform=get_train_transform(model=args.model))
 
     # Create a data loader to load the images in batches
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
@@ -232,10 +235,6 @@ def train(args):
         # Save wandb id to args for later resume training
         setattr(args, "wandb_id", wandb.run.id)
 
-    print()
-    print("-" * 60)
-    print()
-
     # Define the optimizer and scaler
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
     scaler = torch.cuda.amp.GradScaler(enabled=True if args.device == "cuda" else False)
@@ -244,7 +243,7 @@ def train(args):
     best_loss = 1.0
     start_epoch = 0
 
-    if hasattr(args, "checkpoint"):
+    if hasattr(args, "checkpoint") and hasattr(args, "resume"):
         # Load optimizer state
         optimizer.load_state_dict(checkpoint["optimizer"])
 
@@ -256,7 +255,7 @@ def train(args):
         running_loss = 0.0
 
         # Iterate over the data loader batches
-        for inputs, _ in tqdm(train_loader):
+        for inputs, _ in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{args.epochs}"):
             # Move the data to the proper device (GPU or CPU)
             inputs = inputs.to(args.device)
 
@@ -276,7 +275,7 @@ def train(args):
             # Accumulate loss
             running_loss += loss.mean().item()
 
-            # Detach inputs from GPU
+            # Detach data from GPU
             inputs.detach()
 
         # Compute epoch loss

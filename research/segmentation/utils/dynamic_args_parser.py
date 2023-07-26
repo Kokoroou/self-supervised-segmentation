@@ -2,23 +2,21 @@ import argparse
 import importlib
 import sys
 
-from ..tasks import add_train_arguments, add_resume_arguments, add_test_arguments, add_infer_arguments
+from ..tasks import add_train_arguments, add_test_arguments, add_infer_arguments
 
 
 def get_args():
-    parser = argparse.ArgumentParser(prog='Autoencoder',
+    parser = argparse.ArgumentParser(prog='Segmentation',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     subparsers = parser.add_subparsers(help="Sub-commands help")
 
     # Create subparsers for each task
     parser_train = subparsers.add_parser("train", help="Train a model")
-    parser_resume = subparsers.add_parser("resume", help="Resume training a model")
     parser_test = subparsers.add_parser("test", help="Test a model")
     parser_infer = subparsers.add_parser("infer", help="Infer a model on one image")
 
     # Add arguments for each task
     add_train_arguments(parser_train)
-    add_resume_arguments(parser_resume)
     add_test_arguments(parser_test)
     add_infer_arguments(parser_infer)
 
@@ -31,8 +29,6 @@ def get_args():
     add_model_arguments = getattr(module, "add_model_arguments")
     if "train" in sys.argv:
         add_model_arguments(parser_train)
-    elif "resume" in sys.argv:
-        add_model_arguments(parser_resume)
     elif "test" in sys.argv:
         add_model_arguments(parser_test)
     elif "infer" in sys.argv:

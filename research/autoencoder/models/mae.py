@@ -232,48 +232,31 @@ class MaskedAutoencoderViT(nn.Module):
             torch.Tensor: Mask tensor indicating the masked elements.
             torch.Tensor: Restored indices tensor for masked elements.
         """
-        print(1, x.shape)
-
         # Divide image into patches and embed them
         x = self.patch_embed(x)
-
-        print(2, x.shape)
 
         # Add positional embedding without classification token
         x = x + self.pos_embed[:, 1:, :]
 
-        print(3, x.shape)
-
         # Masking image patches, only keep patches that unmasked and info for restoring
         x, mask, ids_restore = random_masking(x, mask_ratio)
-
-        print(4, x.shape)
 
         # Append cls token
         cls_token = self.cls_token + self.pos_embed[:, :1, :]
         cls_tokens = cls_token.expand(x.shape[0], -1, -1)
         x = torch.cat((cls_tokens, x), dim=1)
 
-        print(5, x.shape)
-
         # Apply Transformer blocks
         for blk in self.blocks:
             x = blk(x)
         x = self.norm(x)
 
-        print(6, x.shape)
-
         return x, mask, ids_restore
 
     def forward_decoder(self, x, ids_restore):
 
-        print()
-        print(1, x.shape)
-
         # embed tokens
         x = self.decoder_embed(x)
-
-        print(2, x.shape)
 
         # append mask tokens to sequence
         mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] + 1 - x.shape[1], 1)
@@ -281,29 +264,19 @@ class MaskedAutoencoderViT(nn.Module):
         x_ = torch.gather(x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, x.shape[2]))  # unshuffle
         x = torch.cat([x[:, :1, :], x_], dim=1)  # append cls token
 
-        print(3, x.shape)
-
         # add pos embed
         x = x + self.decoder_pos_embed
-
-        print(4, x.shape)
 
         # apply Transformer blocks
         for blk in self.decoder_blocks:
             x = blk(x)
         x = self.decoder_norm(x)
 
-        print(5, x.shape)
-
         # predictor projection
         x = self.decoder_pred(x)
 
-        print(6, x.shape)
-
         # remove cls token
         x = x[:, 1:, :]
-
-        print(7, x.shape)
 
         return x
 
