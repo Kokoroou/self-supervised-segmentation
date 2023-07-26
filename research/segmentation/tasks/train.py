@@ -281,7 +281,7 @@ def train(args):
     print()
 
     # Define the optimizer
-    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+    optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate)
 
     # Define the loss function
     criterion = nn.BCELoss()

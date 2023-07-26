@@ -5,8 +5,6 @@ import torch
 import torch.nn as nn
 from timm.models.vision_transformer import PatchEmbed, Block
 
-from .utils.image_process import random_masking
-
 model_name = "ViTMAESeg"  # Name of main class
 
 
@@ -209,9 +207,6 @@ class ViTMAESeg(nn.Module):
 
         # Add positional embedding without classification token
         x = x + self.pos_embed[:, 1:, :]
-
-        # Masking image patches, only keep patches that unmasked and info for restoring
-        x, mask, ids_restore = random_masking(x, mask_ratio=0)
 
         # # Append cls token
         # cls_token = self.cls_token + self.pos_embed[:, :1, :]
