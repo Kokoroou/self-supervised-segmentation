@@ -24,7 +24,7 @@ def main():
 
     default_choice = ["--Select--"]
     local_checkpoint_list = [checkpoint_path.name for checkpoint_path in checkpoint_dir.glob('*')]
-    online_checkpoint_list = []
+    online_checkpoint_list = ["kokoroou/vit-mae-seg-base-polyp", "kokoroou/vit-mae-seg-base-polyp-1"]
 
     # Add components to the sidebar
     selected_model = st.sidebar.selectbox("Select Model", default_choice +

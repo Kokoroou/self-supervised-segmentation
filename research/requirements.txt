@@ -1,17 +1,16 @@
-einops==0.6.1
+imutils==0.5.4
 matplotlib==3.7.1
 numpy==1.23.5
 opencv_python==4.7.0.72
 pandas==2.0.2
 Pillow==9.5.0
-setuptools==67.8.0
 scikit-image==0.21.0
-streamlit==1.23.1
-submitit==1.4.5
-tensorflow==2.12.0
-# tensorflow-intel==2.12.0
 timm==0.6.13
+torch==2.0.0
 torchinfo==1.8.0
+torchvision==0.15.1
 tqdm==4.65.0
 transformers==4.30.2
+validators==0.20.0
 wandb==0.15.4
+wget==3.2
