@@ -1,9 +1,66 @@
+from functools import partial
 from typing import Any
 
 import torch
 import torch.nn as nn
 from timm.models.vision_transformer import PatchEmbed, Block
-from transformers import ViTMAEConfig, PreTrainedModel
+
+model_name = "ViTMAESeg"  # Name of main class
+
+
+def add_model_arguments(parser):
+    """
+    Add model's specific arguments
+
+    :param parser: The parser to add arguments
+    """
+    parser_mae = parser.add_argument_group("vit_unetr")
+    parser_mae.add_argument(
+        "--arch",
+        "-a",
+        type=str,
+        help="Name of the defined ViT_UNetR architecture to use",
+    )
+    parser_mae.add_argument(
+        "--img-size",
+        type=int,
+        help="Size of input image"
+    )
+    parser_mae.add_argument(
+        "--patch-size",
+        type=int,
+        help="Size of each patch"
+    )
+    parser_mae.add_argument(
+        "--in-chans",
+        type=int,
+        help="Number of input channels"
+    )
+    parser_mae.add_argument(
+        "--encoder-embed-dim",
+        type=int,
+        help="Embedding dimension of encoder"
+    )
+    parser_mae.add_argument(
+        "--encoder-depth",
+        type=int,
+        help="Depth of encoder"
+    )
+    parser_mae.add_argument(
+        "--encoder-num-heads",
+        type=int,
+        help="Number of heads of encoder"
+    )
+    parser_mae.add_argument(
+        "--mlp-ratio",
+        type=float,
+        help="Ratio of mlp hidden dimension to embedding dimension"
+    )
+    parser_mae.add_argument(
+        "--norm-pix-loss",
+        action="store_true",
+        help="Normalize pixel loss"
+    )
 
 
 class UNetRConvBlock(nn.Module):
@@ -204,21 +261,22 @@ class ViTMAESeg(nn.Module):
         return output
 
 
-class ViTMAESegModel(PreTrainedModel):
-    config_class = ViTMAEConfig
+def vit_mae_seg_base(**kwargs):
+    model = ViTMAESeg(patch_size=16, encoder_embed_dim=768, encoder_depth=12, encoder_num_heads=12,
+                      decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+                      mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
 
-    def __init__(self, config):
-        super().__init__(config)
 
-        self.config = config
-        self.model = ViTMAESeg(
-            img_size=config.image_size,
-            patch_size=config.patch_size,
-            in_chans=config.num_channels,
-            encoder_embed_dim=config.hidden_size,
-            encoder_depth=config.num_hidden_layers,
-            encoder_num_heads=config.num_attention_heads,
-        )
+def vit_mae_seg_large(**kwargs):
+    model = ViTMAESeg(patch_size=16, encoder_embed_dim=1024, encoder_depth=24, encoder_num_heads=16,
+                      decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+                      mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
 
-    def forward(self, pixel_values):
-        return self.model(pixel_values)
+
+def vit_mae_seg_huge(**kwargs):
+    model = ViTMAESeg(patch_size=14, encoder_embed_dim=1280, encoder_depth=32, encoder_num_heads=16,
+                      decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+                      mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model

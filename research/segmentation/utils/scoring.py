@@ -1,9 +1,64 @@
+import math
+from statistics import mean
 from typing import Tuple
 
 import numpy as np
+import torch
+from tqdm import tqdm
 
 
-def calculate_intersection_over_union(y_true: np.ndarray, y_pred: np.ndarray) -> np.float64:
+def compute_miou(model, data_loader, device):
+    """
+    Compute mean intersection over union (mIoU) for a model
+
+    Args:
+        model: model to compute mIoU
+        data_loader: DataLoader for evaluate model
+        device: device to use for evaluate model
+    Returns:
+        miou: mean intersection over union score
+    """
+    # Set model to evaluate mode
+    model.eval()
+
+    # Initialize list of intersection over union
+    ious = []
+
+    # Iterate over batches
+    for images, masks in tqdm(data_loader, desc="Computing mIoU"):
+        # Move images and masks to device
+        images = images.to(device)
+        masks = masks.to(device)
+
+        # Forward pass
+        with torch.no_grad():
+            outputs = model(images)
+
+        masks = torch.round(masks).to(torch.int64)
+        outputs = torch.round(outputs).to(torch.int64)
+
+        batch_size = images.size()[0]
+
+        batch_iou = []
+
+        for i in range(batch_size):
+            # Calculate intersection over union
+            iou = calculate_intersection_over_union(masks[i][0], outputs[i][0])
+
+            if not math.isnan(iou):
+                batch_iou.append(iou)
+
+        if len(batch_iou) > 0:
+            # Append to list of intersection over union
+            ious.append(mean(batch_iou))
+
+    # Calculate mean intersection over union
+    miou = mean(ious) if len(ious) > 0 else 0
+
+    return miou
+
+
+def calculate_intersection_over_union(y_true: torch.Tensor, y_pred: torch.Tensor):
     """
     Calculate intersection over union
 
@@ -13,23 +68,23 @@ def calculate_intersection_over_union(y_true: np.ndarray, y_pred: np.ndarray) ->
     Returns:
         iou: intersection over union score
     """
-    if y_true.shape != y_pred.shape:
-        raise ValueError(f"y_true and y_pred must have the same shape: {y_true.shape} != {y_pred.shape}")
-    if len(y_true.shape) != 2:
-        raise ValueError(f"y_true and y_pred must be 2D: {len(y_true.shape)} != 2")
+    if y_true.size() != y_pred.size():
+        raise ValueError(f"y_true and y_pred must have the same shape: {y_true.size()} != {y_pred.size()}")
+    if len(y_true.size()) != 2:
+        raise ValueError(f"y_true and y_pred must be 2D: {len(y_true.size())} != 2")
 
     # Calculate intersection and union for each class
-    intersection = np.logical_and(y_true, y_pred)
-    union = np.logical_or(y_true, y_pred)
+    intersection = torch.logical_and(y_true, y_pred)
+    union = torch.logical_or(y_true, y_pred)
 
     # Sum the number of True values in each intersection and union
-    intersection = np.sum(intersection)
-    union = np.sum(union)
+    intersection = torch.sum(intersection)
+    union = torch.sum(union)
 
     # Calculate intersection over union for each class
     iou = intersection / union
 
-    return iou
+    return iou.item()
 
 
 def calculate_pixel_accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> np.float64:

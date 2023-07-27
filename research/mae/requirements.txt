@@ -1,5 +1,0 @@
-numpy==1.24.3
-torch==2.0.1
-tensorboard==2.13.0
-torchvision==0.15.2
-timm==0.6.13

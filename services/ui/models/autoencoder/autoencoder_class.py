@@ -6,8 +6,8 @@ from ui.models.autoencoder.autoencoder_result import AutoencoderResult
 class Autoencoder:
     def __init__(self, model):
         """
-        Initialize a autoencoder model. If 'model' is a checkpoint path, load the model from the checkpoint.
-        :param model: Model name or checkpoint path
+        Initialize a autoencoder model. If 'model' is a checkpoint directory, load the model from the checkpoint.
+        :param model: Model name or checkpoint directory
         """
         self.image_processor = AutoImageProcessor.from_pretrained(model)
         self.model = ViTMAEForPreTraining.from_pretrained(model)

@@ -1,7 +1,6 @@
 import time
 from pathlib import Path
 
-import cv2
 import streamlit as st
 from PIL import Image
 
@@ -22,31 +21,35 @@ def main():
 
     current_dir = Path(__file__).parent.resolve()
     checkpoint_dir = current_dir.parent / "models" / "autoencoder" / "vit_mae" / "checkpoint"
-    local_checkpoint_list = [checkpoint_path.name for checkpoint_path in checkpoint_dir.glob('*')]
 
+    default_choice = ["--Select--"]
+    local_checkpoint_list = [checkpoint_path.name for checkpoint_path in checkpoint_dir.glob('*')]
     online_checkpoint_list = ["facebook/vit-mae-base", "facebook/vit-mae-large", "facebook/vit-mae-huge",
-                              "kokoroou/vit-mae-base-1"]
+                              "kokoroou/fb-vit-mae-large-ganloss",
+                              "kokoroou/vit-mae-base-polyp", "kokoroou/vit-mae-large-polyp", ]
 
     # Add components to the sidebar
-    selected_model = st.sidebar.selectbox("Select Model", online_checkpoint_list + local_checkpoint_list)
+    selected_model = st.sidebar.selectbox("Select Model", default_choice +
+                                          online_checkpoint_list + local_checkpoint_list)
 
-    if selected_model in local_checkpoint_list:
-        selected_model = str(checkpoint_dir / selected_model)
+    if selected_model not in default_choice:
+        if selected_model in local_checkpoint_list:
+            selected_model = str(checkpoint_dir / selected_model)
 
-    masking_percentage = st.sidebar.slider(label="Masking Percentage",
-                                           min_value=0, max_value=100, value=75, step=5)
-
-    # Check if the model has been loaded
-    if "model" not in st.session_state:
-        # Load the model
-        st.session_state.selected_model = selected_model
-        st.session_state.model = load_model(selected_model)
-    else:
-        # Check if the selected model has changed
-        if st.session_state.selected_model != selected_model:
+        # Check if the model has been loaded
+        if "model" not in st.session_state:
             # Load the model
             st.session_state.selected_model = selected_model
             st.session_state.model = load_model(selected_model)
+        else:
+            # Check if the selected model has changed
+            if st.session_state.selected_model != selected_model:
+                # Load the model
+                st.session_state.selected_model = selected_model
+                st.session_state.model = load_model(selected_model)
+
+    masking_percentage = st.sidebar.slider(label="Masking Percentage",
+                                           min_value=0, max_value=100, value=75, step=5)
 
     # Create the main content area
     st.title("Masked Autoencoder Model Inference")
@@ -59,32 +62,33 @@ def main():
         # Display the uploaded image
         st.image(uploaded_file, caption=uploaded_file.name, use_column_width=True)
 
-        # Perform the inference using the selected model
-        with st.spinner("Inferencing..."):
-            start_time = time.time()
+        if selected_model in default_choice:
+            st.warning("Please select a model to perform inference.")
 
-            # Load image and convert to BGR
-            image = Image.open(uploaded_file)
-            original_width, original_height = image.size
+        else:
+            # Perform the inference using the selected model
+            with st.spinner("Inferencing..."):
+                start_time = time.time()
 
-            # Mask the image and reconstruct it with model Masked Autoencoder
-            result = st.session_state.model.inference(image, mask_ratio=masking_percentage / 100)
+                # Load image and convert to BGR
+                image = Image.open(uploaded_file)
 
-            # Resize the image to the original size
-            masked = cv2.resize(result.masked, (original_width, original_height))
-            reconstructed = cv2.resize(result.reconstructed, (original_width, original_height))
-            pasted = cv2.resize(result.pasted, (original_width, original_height))
+                # Mask the image and reconstruct it with model Masked Autoencoder
+                result = st.session_state.model.inference(image, mask_ratio=(masking_percentage / 100))
 
-            end_time = time.time()
+                # Get the masked, reconstructed and pasted image from the result
+                masked, reconstructed, pasted = result.masked, result.reconstructed, result.pasted
 
-        # Display the inference result
-        st.subheader("Inference Result")
-        st.image(masked, caption="Masked Image", use_column_width=True)
-        st.image(reconstructed, caption="Reconstructed Image", use_column_width=True)
-        st.image(pasted, caption="Pasted Image", use_column_width=True)
+                end_time = time.time()
 
-        # Display the inference time
-        st.write(f"Inference Time: **{end_time - start_time:.2f}** seconds")
+            # Display the inference result
+            st.subheader("Inference Result")
+            st.image(masked, caption="Masked Image", use_column_width=True)
+            st.image(reconstructed, caption="Reconstructed Image", use_column_width=True)
+            st.image(pasted, caption="Pasted Image", use_column_width=True)
+
+            # Display the inference time
+            st.write(f"Inference Time: **{end_time - start_time:.2f}** seconds")
 
 
 main()

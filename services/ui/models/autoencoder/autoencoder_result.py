@@ -14,12 +14,14 @@ class AutoencoderResult:
         :param image_size: Resized image size
         :param patch_size: Size of the patch
         """
-        self.input = input_img
+        self.input = np.array(input_img)
         self.output = output
         self.image_size = image_size
         self.patch_size = patch_size
 
         self.mask = None  # Binary mask. 1 is removing, 0 is keeping
+
+        # Images that can be get from the output object. All images are resized to the original image size.
         self.masked = None  # Masked image (input image * mask)
         self.reconstructed = None  # Reconstructed image (output image)
         self.pasted = None  # Pasted image (masked image + reconstructed image)
@@ -33,22 +35,19 @@ class AutoencoderResult:
         Get the masked image from the output object.
         :return: Masked image
         """
-        x = np.array(self.input)
-        x = cv2.resize(x, (self.image_size, self.image_size))
-        x = torch.tensor(x)
-
-        # visualize the mask
+        # Visualize the mask
         mask = self.output.mask.detach().cpu()
         mask = mask.unsqueeze(-1).repeat(1, 1, self.patch_size ** 2 * 3)  # (N, H*W, p*p*3)
         mask = unpatchify(mask, self.patch_size)  # 1 is removing, 0 is keeping
         mask = torch.einsum('nchw->nhwc', mask)
         mask = mask[0]
+        mask = mask.numpy().astype(np.uint8)
 
-        # masked image
-        masked = x * (1 - mask)
+        # Resize the mask to the original image size
+        self.mask = cv2.resize(mask, self.input.shape[:2][::-1], interpolation=cv2.INTER_NEAREST)
 
-        self.mask = mask.numpy().astype(np.uint8)
-        self.masked = masked.numpy().astype(np.uint8)
+        # Masked image
+        self.masked = self.input * (1 - self.mask)
 
         return self.masked
 
@@ -57,24 +56,19 @@ class AutoencoderResult:
         Get the reconstructed image from the output object.
         :return: Reconstructed image
         """
+        # Imagenet normalization
         imagenet_mean = np.array([0.485, 0.456, 0.406])
         imagenet_std = np.array([0.229, 0.224, 0.225])
 
+        # Reconstructed image
         reconstructed = self.output.logits.detach().cpu()
         reconstructed = unpatchify(reconstructed, self.patch_size)
         reconstructed = torch.einsum('nchw->nhwc', reconstructed)
         reconstructed = reconstructed[0]
-
-        # reconstructed = (reconstructed * imagenet_std + imagenet_mean) * 255
-        #
-        # print(reconstructed.shape)
-        # print(torch.min(reconstructed))
-        # print(torch.max(reconstructed))
-
-        # reconstructed = torch.clip(reconstructed * 255, 0, 255)
         reconstructed = torch.clip((reconstructed * imagenet_std + imagenet_mean) * 255, 0, 255)
+        reconstructed = reconstructed.numpy().astype(np.uint8)
 
-        self.reconstructed = reconstructed.numpy().astype(np.uint8)
+        self.reconstructed = cv2.resize(reconstructed, self.input.shape[:2][::-1])
 
         return self.reconstructed
 

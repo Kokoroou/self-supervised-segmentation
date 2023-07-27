@@ -1,5 +1,8 @@
 import random
-from pathlib import Path, PosixPath, PurePosixPath
+import shutil
+from pathlib import Path, PurePosixPath
+
+from tqdm import tqdm
 
 
 def split_data(data_dir, train_ratio: float = 0.8, seed: int = 42):
@@ -25,11 +28,11 @@ def split_data(data_dir, train_ratio: float = 0.8, seed: int = 42):
     segmentation_image_filenames = []
 
     for image_path in source_dir.glob("positive/images/*.jpg"):
-        autoencoder_image_filenames.append(str(PurePosixPath(image_path.relative_to(source_dir))))
-        segmentation_image_filenames.append(str(PurePosixPath(image_path.relative_to(source_dir))))
+        autoencoder_image_filenames.append(image_path)
+        segmentation_image_filenames.append(image_path)
 
     for image_path in source_dir.glob("negative/images/*.jpg"):
-        autoencoder_image_filenames.append(str(PurePosixPath(image_path.relative_to(source_dir))))
+        autoencoder_image_filenames.append(image_path)
 
     # Random shuffle the list of image file names
     random.shuffle(autoencoder_image_filenames)
@@ -43,13 +46,47 @@ def split_data(data_dir, train_ratio: float = 0.8, seed: int = 42):
 
     # Write the train and test sets to text files
     with open(train_autoencoder_file, "w") as f:
-        f.write("\n".join(autoencoder_train))
+        f.write("\n".join([str(PurePosixPath(path.relative_to(source_dir))) for path in autoencoder_train]))
     with open(test_autoencoder_file, "w") as f:
-        f.write("\n".join(autoencoder_test))
+        f.write("\n".join([str(PurePosixPath(path.relative_to(source_dir))) for path in autoencoder_test]))
     with open(train_segmentation_file, "w") as f:
-        f.write("\n".join(segmentation_train))
+        f.write("\n".join([str(PurePosixPath(path.relative_to(source_dir))) for path in segmentation_train]))
     with open(test_segmentation_file, "w") as f:
-        f.write("\n".join(segmentation_test))
+        f.write("\n".join([str(PurePosixPath(path.relative_to(source_dir))) for path in segmentation_test]))
+
+    # Create directories for train and test sets
+    autoencoder_train_dir = source_dir / "train_autoencoder"
+    autoencoder_test_dir = source_dir / "test_autoencoder"
+    segmentation_train_dir = source_dir / "train_segmentation"
+    segmentation_test_dir = source_dir / "test_segmentation"
+
+    # Copy images to train and test directories
+    # for image_path in tqdm(autoencoder_train):
+    #     class_name = image_path.parent.parent.name
+    #     (autoencoder_train_dir / class_name).mkdir(parents=True, exist_ok=True)
+    #     new_image_path = autoencoder_train_dir / class_name / image_path.name
+    #     shutil.copy(image_path, new_image_path)
+    # for image_path in tqdm(autoencoder_test):
+    #     class_name = image_path.parent.parent.name
+    #     (autoencoder_test_dir / class_name).mkdir(parents=True, exist_ok=True)
+    #     new_image_path = autoencoder_test_dir / class_name / image_path.name
+    #     shutil.copy(image_path, new_image_path)
+    for image_path in tqdm(segmentation_train):
+        (segmentation_train_dir / "images").mkdir(parents=True, exist_ok=True)
+        (segmentation_train_dir / "masks").mkdir(parents=True, exist_ok=True)
+        new_image_path = segmentation_train_dir / "images" / image_path.name
+        shutil.copy(image_path, new_image_path)
+        mask_path = image_path.parent.parent / "masks" / image_path.name
+        new_mask_path = segmentation_train_dir / "masks" / image_path.name
+        shutil.copy(mask_path, new_mask_path)
+    for image_path in tqdm(segmentation_test):
+        (segmentation_test_dir / "images").mkdir(parents=True, exist_ok=True)
+        (segmentation_test_dir / "masks").mkdir(parents=True, exist_ok=True)
+        new_image_path = segmentation_test_dir / "images" / image_path.name
+        shutil.copy(image_path, new_image_path)
+        mask_path = image_path.parent.parent / "masks" / image_path.name
+        new_mask_path = segmentation_test_dir / "masks" / image_path.name
+        shutil.copy(mask_path, new_mask_path)
 
 
 if __name__ == "__main__":

@@ -5,28 +5,15 @@ def homepage():
     """
     Build homepage for a multi-page app.
     """
-    st.title("Home")
+    st.title("Welcome to the Homepage!")
 
-    st.write(
-        """
-        ## Welcome to the Homepage!
-        
-        ### This is a demo app to process image with neural network models. 
-        ### To navigate to the other pages, please use the sidebar.
-        
-        ### The following are the list of pages:
-        - Home
-        - Masked Autoencoder
-        - Self-Supervised Semantic Segmentation
-        
-        ### The following are the list of models:
-        - Masked Autoencoder with Vision Transformer
-        - Self-Supervised Semantic Segmentation with Vision Transformer
-        
-        ### The following are the list of datasets:
-        - Polyp Dataset
-        """
-    )
+    st.subheader("To test the autoencoder, go to the Autoencoder page.")
+    # Need to change to our custom image later or add caption about origin of image
+    st.image("https://mchromiak.github.io/articles/2021/Nov/14/Masked-Autoencoders-Are-Scalable-Vision-Learners/img/MaskedAE.png")
+
+    st.subheader("To test the semantic segmentation, go to the Semantic Segmentation page.")
+    # Need to change to our custom image later or add caption about origin of image
+    st.image("https://theaisummer.com/static/8b58a02198e13d2e29a41b40e7c6a035/14b42/semseg.jpg")
 
 
 homepage()
