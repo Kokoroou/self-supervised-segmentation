@@ -28,9 +28,9 @@ class DatasetSegmentation(Dataset):
             data = self.transform(data)
 
             label_transform = transforms.Compose([
+                transforms.ToTensor(),
                 transforms.Grayscale(),
                 transforms.Resize(data.shape[1:], interpolation=Image.NEAREST),
-                transforms.ToTensor()
             ])
 
             label = label_transform(label)
@@ -53,6 +53,9 @@ def get_train_transform(model: str):
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Resize((224, 224), antialias=True),
+            transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0, hue=(0, 0)),
+            transforms.RandomAdjustSharpness(sharpness_factor=2),
+            transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
     else:
