@@ -250,6 +250,7 @@ def train(args):
 
     # Initialize best loss to a large value and start epoch to 0
     best_loss = 1.0
+    best_test_iou = 0.0
     start_epoch = 0
 
     if hasattr(args, "checkpoint") and hasattr(args, "resume"):
@@ -309,11 +310,14 @@ def train(args):
         wandb.log({"loss": current_loss, "train_miou": train_miou, "test_miou": test_miou})
 
         if current_loss < best_loss:
-            best = True
             best_loss = current_loss
 
+        if test_miou > best_test_iou:
+            best = True
+            best_test_iou = test_miou
+
             with open(args.output_dir / "info.txt", "w") as f:
-                f.write(f"Best epoch: {epoch}\nLoss: {current_loss}")
+                f.write(f"Best epoch: {epoch}\nTest mIoU: {test_miou}")
         else:
             best = False
 
