@@ -49,10 +49,6 @@ class DatasetSegmentation(Dataset):
             data = random_transform(data)
             label = random_transform(label)
 
-            cv2.imshow("data", data.permute(1, 2, 0).numpy())
-            cv2.imshow("label", label.permute(1, 2, 0).numpy())
-            cv2.waitKey(0)
-
         return data, label
 
     def __len__(self):
