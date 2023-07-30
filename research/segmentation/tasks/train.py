@@ -212,8 +212,10 @@ def train(args):
     ##############################
 
     # Create an instance of the custom dataset
-    train_dataset = DatasetSegmentation(args.source_dir, transform=get_train_transform(model=args.model))
-    test_dataset = DatasetSegmentation(args.test_dir, transform=get_test_transform(model=args.model))
+    train_dataset = DatasetSegmentation(args.source_dir, transform=get_train_transform(model=args.model),
+                                        geometric_transform=True)
+    test_dataset = DatasetSegmentation(args.test_dir, transform=get_test_transform(model=args.model),
+                                       geometric_transform=False)
 
     # Create a data loader to load the images in batches
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
