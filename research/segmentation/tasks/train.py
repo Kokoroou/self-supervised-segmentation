@@ -194,8 +194,8 @@ def train(args):
         model.load_custom_state_dict(checkpoint["model"])
 
     # Move model to GPU for better performance
+    model = nn.DataParallel(model)  # Use all GPUs
     model.to(args.device)
-    # model = nn.DataParallel(model)  # Use all GPUs
 
     # Set model to train mode
     model.train()
