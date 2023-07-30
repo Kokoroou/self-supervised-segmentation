@@ -246,7 +246,7 @@ def train(args):
     # Define the optimizer and the loss function
     optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate)
     criterion = nn.BCELoss()
-    scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
+    scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9, verbose=True)
 
     # Initialize best loss to a large value and start epoch to 0
     best_loss = 1.0
@@ -291,9 +291,6 @@ def train(args):
             inputs.detach()
             labels.detach()
 
-        # Step the learning rate scheduler after each epoch
-        scheduler.step()
-
         # Compute epoch loss
         current_loss = running_loss / len(train_loader)
 
@@ -303,7 +300,10 @@ def train(args):
         # Compute test mIoU
         test_miou = compute_miou(model, test_loader, args.device)
 
-        print(f"Epoch: {epoch}, Loss: {current_loss:.4f}, Train mIoU: {train_miou:.4f}, Test mIoU: {test_miou:.4f}")
+        print(f"Epoch: {epoch}, Loss: {current_loss:.4f}, Train mIoU: {train_miou:.4f}, Test mIoU: {test_miou:.4f}\n")
+
+        # Step the learning rate scheduler after each epoch
+        scheduler.step()
 
         # Log metrics to wandb
         wandb.log({"loss": current_loss, "train_miou": train_miou, "test_miou": test_miou})
