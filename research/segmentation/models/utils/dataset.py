@@ -1,5 +1,7 @@
+import random
 from pathlib import Path
 
+import cv2
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
@@ -34,6 +36,22 @@ class DatasetSegmentation(Dataset):
             ])
 
             label = label_transform(label)
+
+            random_transform = random.choice([
+                transforms.ColorJitter(brightness=0, contrast=0, saturation=0, hue=(0, 0)),  # No change
+                transforms.RandomHorizontalFlip(p=1),
+                transforms.RandomVerticalFlip(p=1),
+                transforms.RandomRotation([90, 90]),
+                transforms.RandomRotation([180, 180]),
+                transforms.RandomRotation([270, 270]),
+            ])
+
+            data = random_transform(data)
+            label = random_transform(label)
+
+            cv2.imshow("data", data.permute(1, 2, 0).numpy())
+            cv2.imshow("label", label.permute(1, 2, 0).numpy())
+            cv2.waitKey(0)
 
         return data, label
 
