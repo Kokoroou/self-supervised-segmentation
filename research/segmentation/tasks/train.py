@@ -95,7 +95,7 @@ def add_train_arguments(parser):
     )
     parser.add_argument(
         "--learning-rate",
-        type=int,
+        type=float,
         default=0.001,
         help="Learning rate"
     )
@@ -246,6 +246,7 @@ def train(args):
     # Define the optimizer and the loss function
     optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate)
     criterion = nn.BCELoss()
+    scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
     # Initialize best loss to a large value and start epoch to 0
     best_loss = 1.0
@@ -289,6 +290,9 @@ def train(args):
             # Detach data from GPU
             inputs.detach()
             labels.detach()
+
+        # Step the learning rate scheduler after each epoch
+        scheduler.step()
 
         # Compute epoch loss
         current_loss = running_loss / len(train_loader)

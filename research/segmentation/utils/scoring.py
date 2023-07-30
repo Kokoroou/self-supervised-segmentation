@@ -39,18 +39,12 @@ def compute_miou(model, data_loader, device):
 
         batch_size = images.size()[0]
 
-        batch_iou = []
-
         for i in range(batch_size):
             # Calculate intersection over union
             iou = calculate_intersection_over_union(masks[i][0], outputs[i][0])
 
             if not math.isnan(iou):
-                batch_iou.append(iou)
-
-        if len(batch_iou) > 0:
-            # Append to list of intersection over union
-            ious.append(mean(batch_iou))
+                ious.append(iou)
 
     # Calculate mean intersection over union
     miou = mean(ious) if len(ious) > 0 else 0
