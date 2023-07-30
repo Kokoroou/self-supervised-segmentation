@@ -265,6 +265,7 @@ def train(args):
 
     for epoch in range(start_epoch, args.epochs):
         running_loss = 0.0
+        current_learning_rate = optimizer.param_groups[0]["lr"]
 
         # Iterate over the data loader batches
         for inputs, labels in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{args.epochs}"):
@@ -309,7 +310,7 @@ def train(args):
         scheduler.step()
 
         # Log metrics to wandb
-        wandb.log({"loss": current_loss, "train_miou": train_miou, "test_miou": test_miou})
+        wandb.log({"loss": current_loss, "train_miou": train_miou, "test_miou": test_miou, "lr": current_learning_rate})
 
         if current_loss < best_loss:
             best_loss = current_loss
