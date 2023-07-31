@@ -109,14 +109,14 @@ class ViTMAESeg(nn.Module):
         self.patch_embed = PatchEmbed(img_size, patch_size, in_chans, encoder_embed_dim)
 
         for param in self.patch_embed.parameters():
-            param.requires_grad = True
+            param.requires_grad = False
 
         # self.cls_token = nn.Parameter(torch.zeros(1, 1, encoder_embed_dim),
         #                               requires_grad=True)
 
         # fixed sin-cos embedding
         self.pos_embed = nn.Parameter(torch.zeros(1, self.patch_embed.num_patches + 1, encoder_embed_dim),
-                                      requires_grad=True)
+                                      requires_grad=False)
 
         self.blocks = nn.ModuleList([
             Block(encoder_embed_dim, encoder_num_heads, mlp_ratio, qkv_bias=True, norm_layer=norm_layer)
@@ -124,9 +124,9 @@ class ViTMAESeg(nn.Module):
         self.norm = norm_layer(encoder_embed_dim)
 
         for param in self.blocks.parameters():
-            param.requires_grad = True
+            param.requires_grad = False
         for param in self.norm.parameters():
-            param.requires_grad = True
+            param.requires_grad = False
         # --------------------------------------------------------------------------
 
         # --------------------------------------------------------------------------
