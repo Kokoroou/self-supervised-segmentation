@@ -99,6 +99,12 @@ def add_train_arguments(parser):
         default=0.001,
         help="Learning rate"
     )
+    parser.add_argument(
+        "--weight-decay",
+        type=float,
+        default=0.001,
+        help="Weight decay for L2 regularization"
+    )
     parser.set_defaults(func=train)
 
 
@@ -246,7 +252,7 @@ def train(args):
         setattr(args, "wandb_id", wandb.run.id)
 
     # Define the optimizer and the loss function
-    optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate)
+    optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     criterion = nn.BCELoss()
     # scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9, verbose=True)
 
