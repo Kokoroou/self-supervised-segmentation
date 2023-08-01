@@ -88,7 +88,7 @@ def main():
             st.image(pasted, caption="Pasted Image", use_column_width=True)
 
             # Display the inference time
-            st.write(f"Inference Time: **{end_time - start_time:.2f}** seconds")
+            st.info(f"Inference Time: **{end_time - start_time:.2f}** seconds")
 
 
 main()

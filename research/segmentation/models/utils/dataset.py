@@ -1,3 +1,4 @@
+import random
 from pathlib import Path
 
 from PIL import Image
@@ -6,10 +7,11 @@ from torchvision import transforms
 
 
 class DatasetSegmentation(Dataset):
-    def __init__(self, folder_path, transform=None):
+    def __init__(self, folder_path, transform=None, geometric_transform=False):
         super(DatasetSegmentation, self).__init__()
 
         self.transform = transform
+        self.geometric_transform = geometric_transform
 
         folder_path = Path(folder_path)
 
@@ -28,12 +30,25 @@ class DatasetSegmentation(Dataset):
             data = self.transform(data)
 
             label_transform = transforms.Compose([
+                transforms.ToTensor(),
                 transforms.Grayscale(),
                 transforms.Resize(data.shape[1:], interpolation=Image.NEAREST),
-                transforms.ToTensor()
             ])
 
             label = label_transform(label)
+
+            # if self.geometric_transform:
+            #     random_transform = random.choice([
+            #         transforms.ColorJitter(brightness=0, contrast=0, saturation=0, hue=(0, 0)),  # No change
+            #         transforms.RandomHorizontalFlip(p=1),
+            #         transforms.RandomVerticalFlip(p=1),
+            #         transforms.RandomRotation([90, 90]),
+            #         transforms.RandomRotation([180, 180]),
+            #         transforms.RandomRotation([270, 270]),
+            #     ])
+            #
+            #     data = random_transform(data)
+            #     label = random_transform(label)
 
         return data, label
 
@@ -53,6 +68,9 @@ def get_train_transform(model: str):
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Resize((224, 224), antialias=True),
+            # transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0, hue=(0, 0)),
+            # transforms.RandomAdjustSharpness(sharpness_factor=2),
+            # transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
     else:

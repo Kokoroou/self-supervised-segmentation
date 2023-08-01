@@ -88,7 +88,7 @@ def add_train_arguments(parser):
     )
     parser.add_argument(
         "--learning-rate",
-        type=int,
+        type=float,
         default=0.001,
         help="Learning rate"
     )

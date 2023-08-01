@@ -95,9 +95,15 @@ def add_train_arguments(parser):
     )
     parser.add_argument(
         "--learning-rate",
-        type=int,
+        type=float,
         default=0.001,
         help="Learning rate"
+    )
+    parser.add_argument(
+        "--weight-decay",
+        type=float,
+        default=0.001,
+        help="Weight decay for L2 regularization"
     )
     parser.set_defaults(func=train)
 
@@ -194,8 +200,8 @@ def train(args):
         model.load_custom_state_dict(checkpoint["model"])
 
     # Move model to GPU for better performance
+    model = nn.DataParallel(model)  # Use all GPUs
     model.to(args.device)
-    # model = nn.DataParallel(model)  # Use all GPUs
 
     # Set model to train mode
     model.train()
@@ -212,8 +218,10 @@ def train(args):
     ##############################
 
     # Create an instance of the custom dataset
-    train_dataset = DatasetSegmentation(args.source_dir, transform=get_train_transform(model=args.model))
-    test_dataset = DatasetSegmentation(args.test_dir, transform=get_test_transform(model=args.model))
+    train_dataset = DatasetSegmentation(args.source_dir, transform=get_train_transform(model=args.model),
+                                        geometric_transform=True)
+    test_dataset = DatasetSegmentation(args.test_dir, transform=get_test_transform(model=args.model),
+                                       geometric_transform=False)
 
     # Create a data loader to load the images in batches
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
@@ -244,11 +252,13 @@ def train(args):
         setattr(args, "wandb_id", wandb.run.id)
 
     # Define the optimizer and the loss function
-    optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate)
+    optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     criterion = nn.BCELoss()
+    # scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9, verbose=True)
 
     # Initialize best loss to a large value and start epoch to 0
     best_loss = 1.0
+    best_test_iou = 0.0
     start_epoch = 0
 
     if hasattr(args, "checkpoint") and hasattr(args, "resume"):
@@ -261,6 +271,7 @@ def train(args):
 
     for epoch in range(start_epoch, args.epochs):
         running_loss = 0.0
+        current_learning_rate = optimizer.param_groups[0]["lr"]
 
         # Iterate over the data loader batches
         for inputs, labels in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{args.epochs}"):
@@ -299,17 +310,23 @@ def train(args):
         # Compute test mIoU
         test_miou = compute_miou(model, test_loader, args.device)
 
-        print(f"Epoch: {epoch}, Loss: {current_loss:.4f}, Train mIoU: {train_miou:.4f}, Test mIoU: {test_miou:.4f}")
+        print(f"Epoch: {epoch}, Loss: {current_loss:.4f}, Train mIoU: {train_miou:.4f}, Test mIoU: {test_miou:.4f}\n")
+
+        # # Step the learning rate scheduler after each epoch
+        # scheduler.step()
 
         # Log metrics to wandb
-        wandb.log({"loss": current_loss, "train_miou": train_miou, "test_miou": test_miou})
+        wandb.log({"loss": current_loss, "train_miou": train_miou, "test_miou": test_miou, "lr": current_learning_rate})
 
         if current_loss < best_loss:
-            best = True
             best_loss = current_loss
 
+        if test_miou > best_test_iou:
+            best = True
+            best_test_iou = test_miou
+
             with open(args.output_dir / "info.txt", "w") as f:
-                f.write(f"Best epoch: {epoch}\nLoss: {current_loss}")
+                f.write(f"Best epoch: {epoch}\nTest mIoU: {test_miou}")
         else:
             best = False
 
