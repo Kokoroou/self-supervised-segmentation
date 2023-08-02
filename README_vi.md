@@ -90,6 +90,6 @@ python services/main_streamlit.py
 
 ### Triển khai với Docker
 ```bash
-docker build -t self-supervised-segmentation .
+docker build -t vit_streamlit .
 docker container run -d --name vit_streamlit -p 8585:8585 -m 3g --cpus 2 vit_streamlit
 ```
