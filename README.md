@@ -1,83 +1,96 @@
-# Học tự giám sát cho mô hình phân vùng ảnh y khoa
+[Tiếng Việt](https://github.com/Kokoroou/self-supervised-segmentation/blob/main/README_vi.md)
 
-## Giới thiệu
-Trong lĩnh vực y tế, việc thu thập được nhiều dữ liệu chất lượng để huấn luyện các mô hình học máy là tương đối 
-khó khăn. Một mặt, dữ liệu y tế thường là những dữ liệu nhạy cảm, có liên quan đến thông tin cá nhân của người bệnh. 
-Mặt khác, việc gán nhãn cho dữ liệu y tế cũng cần đến sự can thiệp của các chuyên gia y tế. 
+# Self-supervised learning for medical image segmentation
 
-Trong đồ án này, một phương pháp học tự giám sát cho mô hình phân vùng ảnh y khoa sẽ được thử nghiệm. Thành công của
-đồ án sẽ mở ra một hướng tiếp cận mới cho việc huấn luyện các mô hình học máy trong lĩnh vực y tế, mà không cần phụ 
-thuộc vào lượng dữ liệu quá nhiều.
+## Introduction
+In the medical field, it is quite difficult to collect a large amount of high-quality data to train machine learning 
+models. On the one hand, medical data is often sensitive, related to the personal information of patients. On the other
+hand, labeling medical data also requires the intervention of medical experts.
 
-## Dữ liệu
-Bộ dữ liệu được sử dụng trong đồ án này:
+In this thesis, a self-supervised learning method for the medical image segmentation model will be tested. The success
+of the thesis will open up a new approach for training machine learning models in the medical field, without relying on
+too much data.
+
+## Dataset
+The dataset used in this thesis:
 
 - [PolypGen2021](https://www.synapse.org/#!Synapse:syn26376615/wiki/613312)
 
-## Yêu cầu
+## Model architecture
+- Masked Autoencoder
+- UNETR
+
+The model tested in the thesis is built based on the following paper:
+[Self Pre-training with Masked Autoencoders for Medical Image Classification and 
+Segmentation](https://arxiv.org/abs/2203.05573)
+
+![Model Architecture](https://raw.githubusercontent.com/Kokoroou/self-supervised-segmentation/main/services/ui/image/implemented_model_architecture.png)
+
+## Requirements
 - Python 3.9
 
-## Sử dụng
+## Usage
 
-Clone repository này về môi trường của bạn:
+Clone this repository to your environment:
 ```bash
 git clone https://github.com/Kokoroou/self-supervised-segmentation.git
 cd self-supervised-segmentation
 ```
 
-### Nghiên cứu
+### Research
 
-#### Cài đặt môi trường
+#### Environment setup
 ```bash
 pip install -r research/requirements.txt
 ```
-#### Huấn luyện mô hình
+#### Train model
 ```bash
-# Huấn luyện mô hình Masked Autoencoder
+# Train Masked Autoencoder model
 python research/main_autoencoder.py train -m mae_vit_base_patch16 -s {path_to_dataset}
 
-# Huấn luyện mô hình Segmentation
+# Train Segmentation model
 python research/main_segmentation.py train -m vit_mae_seg_base -s {path_to_train_dataset} -t {path_to_test_dataset}
 ```
 
-#### Sử dụng mô hình
+#### Use model
 ```bash
-# Sử dụng mô hình Masked Autoencoder
+# Use Masked Autoencoder model
 python research/main_autoencoder.py infer -m mae_vit_base_patch16 -c {path_to_checkpoint} -i {path_to_image}
 
-# Sử dụng mô hình Segmentation
+# Use Segmentation model
 python research/main_segmentation.py infer -m vit_mae_seg_base -c {path_to_checkpoint} -i {path_to_image}
 ```
 
-#### Trợ giúp
+#### Help
 ```bash
-# Trợ giúp cho mô hình Masked Autoencoder
+# Help for Masked Autoencoder model
 python research/main_autoencoder.py -h
 python research/main_autoencoder.py train -h
 python research/main_autoencoder.py test -h
 python research/main_autoencoder.py infer -h
 
-# Trợ giúp cho mô hình Segmentation
+# Help for Segmentation model
 python research/main_segmentation.py -h
 python research/main_segmentation.py train -h
 python research/main_segmentation.py test -h
 python research/main_segmentation.py infer -h
 ``` 
 
-### Ứng dụng
+### Application
 
-#### Cài đặt môi trường
+#### Environment setup
 ```bash
 pip install -r services/requirements.txt
 pip install -r services/requirements_pytorch.txt
+pip install -e ./services
 ```
 
-#### Chạy ứng dụng
+#### Run application
 ```bash
 python services/main_streamlit.py
 ```
 
-### Triển khai với Docker
+### Implement with Docker
 ```bash
 docker build -t self-supervised-segmentation .
 docker container run -d --name vit_streamlit -p 8585:8585 -m 3g --cpus 2 vit_streamlit
