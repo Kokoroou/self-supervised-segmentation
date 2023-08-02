@@ -7,13 +7,17 @@ def homepage():
     """
     st.title("Welcome to the Homepage!")
 
-    st.subheader("To test the autoencoder, go to the Autoencoder page.")
-    # Need to change to our custom image later or add caption about origin of image
-    st.image("https://mchromiak.github.io/articles/2021/Nov/14/Masked-Autoencoders-Are-Scalable-Vision-Learners/img/MaskedAE.png")
+    st.subheader("Masked Autoencoder")
+    st.image(
+        "https://raw.githubusercontent.com/Kokoroou/self-supervised-segmentation/main/services/demo_autoencoder.png")
+    st.caption("Visualize the output of the autoencoder. The left image is the original image, the middle image "
+               "is the masked image, and the right image is the reconstructed image.")
 
-    st.subheader("To test the semantic segmentation, go to the Semantic Segmentation page.")
-    # Need to change to our custom image later or add caption about origin of image
-    st.image("https://theaisummer.com/static/8b58a02198e13d2e29a41b40e7c6a035/14b42/semseg.jpg")
+    st.subheader("Semantic Segmentation")
+    st.image(
+        "https://raw.githubusercontent.com/Kokoroou/self-supervised-segmentation/main/services/demo_segmentation.png")
+    st.caption("Visualize the output of the semantic segmentation. The left image is the original image, the right "
+               "image is the segmented image.")
 
 
 homepage()
